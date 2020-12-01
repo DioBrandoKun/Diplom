@@ -1,11 +1,22 @@
 #include "CustomParser.h"
 void CustomParser::Parse()
 {
-	ptree PackageTree = m_root.get_child("xmi:XMI.uml:Model.packagedElement");
-	ptree Nodes = m_root.get_child("xmi:XMI.xmi:Extension.elements");
+	vector<string> DataType;//Типы данных, так как классы воспринимают другие типы как - нужные для реализации
+	ptree PackageTree = m_root.get_child("xmi:XMI.uml:Model.packagedElement");//Из этой области парсим классы, но здесь мало информации для элементов активности
+	//кроме того странное разделение по тегам для множества Package
+	ptree Nodes = m_root.get_child("xmi:XMI.xmi:Extension.elements");//Область для диаграммы активности
 	BOOST_FOREACH(const ptree::value_type & elem, Nodes.get_child(""))
 	{
-		string Type = elem.second.get<std::string>("<xmlattr>.xmi:type");
+		string Type;
+		try//Для Package без элементов может выдать ошибку
+		{
+			Type = elem.second.get<std::string>("<xmlattr>.xmi:type");
+		}
+		catch(boost::wrapexcept<boost::property_tree::ptree_bad_path>)//Если проект пустой, даже без пакета
+		{
+			cout << "Project is empty";
+			return;
+		}
 		if (Type == "uml:Activity")
 		{
 			cout << "uml:Activity" << endl;
@@ -76,6 +87,7 @@ void CustomParser::Parse()
 				{
 					string id= diagramTree.second.get<std::string>("<xmlattr>.xmi:id");
 					string Name = diagramTree.second.get<std::string>("<xmlattr>.name");
+					DataType.push_back(to_string(IdMap::Insert(Name).second));
 					IdMap::InputName(id, Name);
 				}
 				else
@@ -91,15 +103,19 @@ void CustomParser::Parse()
 		}
 	}
 	IdMap::Print();
-	for (unsigned i = 0; i < AllAssos.size(); i++)
+	for (unsigned i = 0; i < AllActivity.size(); i++)
+	{
+		cout << AllActivity[i].ToString();
+	}
+	for (unsigned i = 0; i < AllAssos.size(); i++)//Восстанавливаем ассоциации
 	{
 		for (unsigned j = 0; j < AllClass.size(); j++)
 		{
-			if (AllAssos[i].GetClass() == to_string(AllClass[j].GetLocalId()))
+			if (AllAssos[i].GetTarget() == to_string(AllClass[j].GetLocalId()))
 				AllClass[j].PutAssos(AllAssos[i]);
 		}
 	}
-	for (unsigned i = 0; i < AllClass.size(); i++)
+	for (unsigned i = 0; i < AllClass.size(); i++)//Переход для всех классов от цифр к буквенным определениям
 	{
 		AllClass[i].SetNum();
 		std::cout << AllClass[i].ToCode();
@@ -111,7 +127,6 @@ ClassTrans CustomParser::Class(const ptree& pt, int Interface)//1-для Интерфеса 
 	const std::string StrVisibility = pt.get<std::string>("<xmlattr>.visibility");
 	const string StrName = pt.get<string>("<xmlattr>.name");
 	ClassTrans Example(Id, StrName);
-	//std::cout << Id  << " " << StrVisibility<<" "<<StrName << std::endl;
 	BOOST_FOREACH(const ptree::value_type & elem, pt.get_child(""))
 	{
 		if (elem.first != "<xmlattr>")
@@ -122,7 +137,7 @@ ClassTrans CustomParser::Class(const ptree& pt, int Interface)//1-для Интерфеса 
 			}
 			if (elem.first == "ownedOperation")
 			{
-				Example.AddOper(ClassOperations(elem.second));
+				Example.AddOperation(ClassOperations(elem.second, StrName));
 			}
 			if (elem.first == "generalization")
 			{
@@ -133,7 +148,7 @@ ClassTrans CustomParser::Class(const ptree& pt, int Interface)//1-для Интерфеса 
 	AllClass.push_back(Example);
 	return Example;
 }
-string CustomParser::Inhert(const ptree& pt)
+string CustomParser::Inhert(const ptree& pt)//Наследование
 {
 	const std::string Id = pt.get<std::string>("<xmlattr>.xmi:id"); 
 	const std::string ParentId = pt.get<std::string>("<xmlattr>.general");
@@ -142,16 +157,14 @@ string CustomParser::Inhert(const ptree& pt)
 ClassValueTrans CustomParser::ClassValue(const ptree& pt)
 {
 	const std::string Id = pt.get<std::string>("<xmlattr>.xmi:id");
-	string ElemName; //= pt.get<std::string>("<xmlattr>.name");
-	string ElemPrivate;// = pt.get<std::string>("<xmlattr>.visibility");
-	string ElemStatic="false";// = pt.get<std::string>("<xmlattr>.isStatic");
+	string ElemName; //
+	string ElemPrivate;// 
+	string ElemStatic="false";// 
 	string AssociationId;
 	string ElemType;
 	string ElemValue="";
-	//const ptree& ptType = pt.get<const ptree&>("<xmlattr>.type");//для поиска типа
 	BOOST_FOREACH(const ptree::value_type & elem, pt.get_child(""))
 	{
-		//cout << elem.first;
 		if (elem.first == "<xmlattr>")
 		{
 			BOOST_FOREACH(const ptree::value_type & Info, elem.second.get_child(""))
@@ -171,11 +184,9 @@ ClassValueTrans CustomParser::ClassValue(const ptree& pt)
 		if (elem.first =="defaultValue") ElemValue= elem.second.get<std::string>("<xmlattr>.value");
 	}
 	ClassValueTrans Example(Id, ElemName, ElemStatic, ElemType, ElemValue, ElemPrivate);
-	//cout << Example.ToCode();
-	//cout <<"ElemInfo:"<< ElemName << " " << ElemPrivate << " " << ElemStatic << " " << ElemType<<" "<<ElemValue<<endl;
 	return Example;
 }
-ClassOperTrans CustomParser::ClassOperations(const ptree& pt)
+ClassOperTrans CustomParser::ClassOperations(const ptree& pt,string ClassName)
 {
 	const std::string Id = pt.get<std::string>("<xmlattr>.xmi:id");
 	const std::string StrVisibility = pt.get<std::string>("<xmlattr>.visibility");
@@ -185,24 +196,35 @@ ClassOperTrans CustomParser::ClassOperations(const ptree& pt)
 	string Static = "false";
 	string Abstract = "false";
 	BOOST_FOREACH(const ptree::value_type & Info, pt.get_child(""))//Параметры операции
-	{
-		
+	{		
 		if(Info.first!="<xmlattr>")
 		{
-			InputName.push_back(Info.second.get<std::string>("<xmlattr>.name"));
-			Return.push_back(Info.second.get<std::string>("<xmlattr>.type"));
+			BOOST_FOREACH(const ptree::value_type & elem, Info.second.get_child("<xmlattr>"))
+			{
+					if (elem.first == "name")
+						InputName.push_back(elem.second.data());
+					else if (elem.first == "type")
+					{
+						cout << elem.second.data();
+						Return.push_back(elem.second.data());
+					}
+			}
 		}
 		else BOOST_FOREACH(const ptree::value_type & Data, Info.second.get_child(""))
 		{
-			if (Info.first != "isAbstract")
-				Static = Info.second.data();
-			if (Info.first != "isStatic")
-				Static = Info.second.data();
+			if (Data.first != "isAbstract")
+				Static = Data.second.data();
+			if (Data.first != "isStatic")
+				Static = Data.second.data();
 		}
 	}
-	//cout << endl;
+	if ((Return.size() != InputName.size()) || (Return.size() == 0))//Если операция содержит неправильное колво элементов
+	{
+		cout << "Wrong operation format\t" << ClassName << "\t" << StrName;
+		//throw std::exception("Wrong operation format\t" + ClassName + "\t" + StrName);
+	}
 	ClassOperTrans Example(Id,StrName,Static, Return[Return.size()-1], StrVisibility);
-	if (Return.size() > 0)
+	if (Return.size() > 1)
 	{
 		Return.pop_back();
 		InputName.pop_back();
@@ -260,10 +282,12 @@ void CustomParser::Enum(const ptree& pt)
 {
 	Class(pt, 2);
 }
-void CustomParser::Activity(const ptree& pt,int ActivType)//1:Final/Start-Node 2:Decision 3:Fork
+void CustomParser::Activity(const ptree& pt,int ActivNum)//1:Final/Start-Node 2:Decision 3:Fork
 {
 	const std::string Id = pt.get<std::string>("<xmlattr>.xmi:idref");
+	const std::string Name = pt.get<std::string>("<xmlattr>.name");
 	const std::string StrVisibility = pt.get<std::string>("<xmlattr>.scope");
+	ActivityTrans Example(Id, ActivType[ActivNum]);
 	string Code;
 	BOOST_FOREACH(const ptree::value_type & Info, pt.get_child(""))
 	{
@@ -276,25 +300,38 @@ void CustomParser::Activity(const ptree& pt,int ActivType)//1:Final/Start-Node 2
 		{
 			BOOST_FOREACH(const ptree::value_type & Elem, Info.second.get_child(""))
 			{
-				
+
 				string LinkId = Elem.second.get<string>("<xmlattr>.xmi:id");
 				string Start = Elem.second.get<string>("<xmlattr>.start");
 				string End = Elem.second.get<string>("<xmlattr>.end");
-				if (ActivType == 3)
+				LinkTrans LinkXMI(LinkId, Start, End);
+				if (ActivNum == 3)
 				{
-					bool push = true;
+					//bool push = true;
+					if(End==Id)
+					if (Link.find(LinkId) == Link.end())
+					{
+						//push = false;
+						Link.insert(LinkId);
+					}
+					/*
 					for (int i = 0; i < Link.size(); i++)
 						if (Id == Link[i])
 						{
 							push = false;
 							break;
 						}
-					if(push)Link.push_back(LinkId);
+						*/
+					//if(push)Link.push_back(LinkId);
 				}
-				cout << "Link:" << Id<<" "<<Start << " " << End << endl;
+				if (Start == Id)
+					Example.AddOutgoing(LinkXMI);
+				//cout << "Link:" << Id<<" "<<Start << " " << End << endl;
 			}
 		}
 	}
+	Example.AddBody(Code);
+	AllActivity.push_back(Example);
 	cout << "Activity:" << Id << " " << Code<<endl;
 }
 void CustomParser::StateNote(const ptree& pt)
@@ -309,18 +346,17 @@ void CustomParser::Fork(const ptree& pt)
 {
 	Activity(pt, 3);
 }
-void CustomParser::EdgeCheck(const ptree& pt)
-{
+void CustomParser::EdgeCheck(const ptree& pt)//Поиск тела link
+{//При использовании fork есть необходимость передавать параметры в потоки эти параметры мы и ищем
 	const std::string Id = pt.get<std::string>("<xmlattr>.xmi:id");
+	string Start = pt.get<string>("<xmlattr>.source");
 	string Body;
 	bool Work=false;
-	for (int i = 0; i < Link.size(); i++)
-		if (Id == Link[i])
-		{
-			Link.erase(Link.begin() + i);
-			Work = true;
-			break;
-		}
+	if (Link.find(Id) != Link.end())
+	{
+		Link.erase(Link.find(Id));
+		Work = true;
+	}
 	if (!Work) return;
 	BOOST_FOREACH(const ptree::value_type & Elem, pt.get_child(""))
 	{
@@ -331,5 +367,12 @@ void CustomParser::EdgeCheck(const ptree& pt)
 				Body = Info.second.data();
 		}
 	}
-	cout << "LinkBody:" << Id << " " << Body << endl;
+	for (unsigned i = 0; i < AllActivity.size(); i++)
+	{
+		if (AllActivity[i].GetId() == Start)
+		{
+			AllActivity[i].AddLinkBody(Id, Body);
+			return;
+		}
+	}
 }

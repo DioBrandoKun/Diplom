@@ -1,14 +1,27 @@
 #pragma once
 #include <string>
 #include <map>
+#include <set>
 #include <boost/numeric/ublas/vector.hpp>
 #include <boost/numeric/ublas/io.hpp>
+#include <boost/lexical_cast.hpp>
 typedef std::map<std::string, unsigned long> IdMapType;
 using namespace std;
+string RightFormat(string Input);
+string Format(string Input);
+/*
+Класс ответственный за хранение таблицы Id
+Формат значений
+XML id : id полученное счетчиком
+
+Так же хранит таблицу Id - Имя 
+формат значений
+id полученное счетчиком : имя из области
+*/
 class IdMap
 {
 public:
-	static const IdMapType::value_type& Insert(const std::string& id)
+	static const IdMapType::value_type& Insert(const std::string& id)//Добавление нового Id
 	{
 		auto it = m_ids.find(id);
 		if (it == m_ids.end())
@@ -20,7 +33,7 @@ public:
 			return *it;
 		}
 	}
-	static void InputName(const std::string& id,const std::string& Name)
+	static void InputName(const std::string& id,const std::string& Name)//Добавление нового имени
 	{
 		auto it =Insert(id);
 		IdName.insert(make_pair(to_string(it.second), Name));
@@ -29,7 +42,7 @@ public:
 	{
 		return m_ids.at(id);
 	}
-	static void Print()
+	static void Print()//Вывод таблицы имен
 	{
 		for (auto i = IdName.cbegin(); i != IdName.cend(); i++)
 		{
@@ -37,15 +50,16 @@ public:
 			cout << i->first << " " << i->second << endl;
 		}
 	}
-	static map<string, string>IdName;
+	static map<string, string>IdName;//Таблица имен
 private:
 	IdMap() {}
 
-	static IdMapType m_ids;
-	static unsigned long m_counter;
+	static IdMapType m_ids;//Таблица id
+	static unsigned long m_counter;//Счетчик
 };
-
-
+/*
+Представления Id классов
+*/
 class Id
 {
 public:
@@ -70,9 +84,11 @@ public:
 	}
 
 private:
-	const IdMapType::value_type& m_valuePair;
+	const IdMapType::value_type& m_valuePair;//Id из XML файла - Id счетчика
 };
-
+/*
+Обертка вокруг Id
+*/
 class INumerableElement //Enum
 {
 public:
@@ -89,7 +105,10 @@ protected:
 	const Id m_id;
 };
 
-
+/*
+Класс для представления статических данных
+хранится в формате true/false
+*/
 class IStaticSkel
 {
 public:
@@ -117,8 +136,10 @@ public:
 private:
 	bool elem_static;
 };
-
-class IStatic //Enum
+/*
+Обертка вокруг IStaticSkel
+*/
+class IStatic 
 {
 public:
 	IStatic(const std::string& StaticType) :Elem_static(StaticType)
@@ -126,7 +147,9 @@ public:
 protected:
 	IStaticSkel Elem_static;
 };
-
+/*
+Класс для представления типа элементов
+*/
 class ITypeSkel //: public virtual IElement
 {
 private:
@@ -136,20 +159,7 @@ public:
 	ITypeSkel() {}
 	ITypeSkel(const std::string& type)
 	{
-		int pos = type.find("EAJava_");
-		if (pos != -1)
-		{
-			elem_type = type.substr(strlen("EAJava_"));
-			while (elem_type.find('_') != string::npos)
-			{
-				cout << elem_type.find('_');
-				elem_type[elem_type.find('_')] = '*';
-			}
-		}
-		else
-		{
-			elem_type = std::to_string(IdMap::Insert(type).second);
-		}
+		elem_type = RightFormat(type);
 	}
 	void SetType(string Type)
 	{
@@ -168,7 +178,9 @@ public:
 		return elem_type+'\t';
 	}
 };
-
+/*
+Обертка вокруг ITypeSkel
+*/
 class IType
 {
 protected: 
@@ -176,7 +188,9 @@ protected:
 public:
 	IType(const std::string& type) :Elem_type(type) {}
 };
-
+/*
+Класс для представления имени объектов
+*/
 class NameSkel
 {
 private:
@@ -195,12 +209,14 @@ public:
 	{
 		return  Name;
 	}
-	void SetName(string NewName)
+	void SetName(string NewName)//Установить имя
 	{
 		Name = NewName;
 	}
 };
-
+/*
+Обертка вокруг NameSkel
+*/
 class IName 
 {
 protected:
@@ -209,7 +225,9 @@ public:
 	IName(const std::string& Name) :Name(Name)
 	{}
 };
-
+/*
+Класс для предоставления параметра {public,private,protected}
+*/
 class IPublicSkel
 {
 public:
@@ -225,7 +243,9 @@ public:
 private:
 	std::string Public;
 };
-
+/*
+Обертка вокруг IPublicSkel для дальнейшего наследования
+*/
 class IPublic
 {
 public:
@@ -233,7 +253,9 @@ public:
 protected:
 	IPublicSkel Public;
 };
-
+/*
+Класс для представления класс-членов
+*/
 class ClassValueTrans:public INumerableElement, public IStatic,public IType,public IName,public IPublic
 {
 public:
@@ -253,12 +275,11 @@ public:
 			 Name.ToString()+
 			 Public.ToString()+
 			"Default=\t"+ DefaultVal+"\n";
-		/*"\t" + GetVisibilityString(m_visibility);*/
 	}
-	const std::string ToCode() const
+	const std::string ToCode() const//Кодогенерация
 	{
 		string Value="";
-		if (!NotStated)
+		if (!NotStated)//Есть ли значение по умолчанию
 		{
 			if(!this->Elem_static.GetStatic())
 			Value="="+DefaultVal;
@@ -269,9 +290,8 @@ public:
 			Elem_type.ToCode() +
 			Name.ToCode() +
 			Value + ";\n";
-		/*"\t" + GetVisibilityString(m_visibility);*/
 	}
-	const std::string AfterToCode(string ClassName) const
+	const std::string AfterToCode(string ClassName) const//Метод когда наш элемент является статическим и мы должны после класса указать его как глобальную переменную
 	{
 		string Value = "";
 		if (!NotStated)
@@ -283,28 +303,36 @@ public:
 			ClassName+"::"+
 			Name.ToCode()+Value+";\n";
 	}
-	bool GetStatic() const
+	bool GetStatic() const//Статический или нет
 	{
 		return this->Elem_static.GetStatic();
 	}
-	void SetName(string NewName)
+	void SetName(string NewName)//Установить имя
 	{
 		Name.SetName(NewName);
 	}
-	void SetNum()
+	string GetType()//Получить тип функции
+	{
+		return this->Elem_type.GetType();
+	}
+	void SetNum()//Параметы из цифр в слова через словарь
 	{
 		string Type = Elem_type.GetType();
 		int J = atoi(Type.c_str());
 		if (J != 0)
 		{
 			auto ThisType = IdMap::IdName.find(Type);
+			if (ThisType == IdMap::IdName.end()) return;
 			Elem_type.SetType(ThisType->second);
 		}
 	}
 private:
-	bool NotStated;
-	const std::string DefaultVal;
+	bool NotStated;//Есть ли дефолтное значение
+	const std::string DefaultVal;//Значение дефолтного значения
 };
+/*
+Класс для представления член-методов класса uml
+*/
 class ClassOperTrans :public INumerableElement, public IStatic, public IType, public IName, public IPublic
 {
 public:
@@ -327,9 +355,8 @@ public:
 			Name.ToString() +
 			ReturnValue+
 			Public.ToString() + "\n";
-		/*"\t" + GetVisibilityString(m_visibility);*/
 	}
-	const std::string ToCode() const
+	const std::string ToCode() const//Кодогенерация
 	{
 		string ReturnValue = "";
 		for (unsigned i = 0; i < Elems.size(); i++)
@@ -344,26 +371,22 @@ public:
 			Name.ToCode() +"("+
 			ReturnValue+")" + ";\n";
 	}
-	void AddElem(string Name, string Type)
+	string GetType()//Получить тип
 	{
-		string Typer;
-		int pos = Type.find("EAJava_");
-		if (pos != -1)
-		{
-			Typer = Type.substr(strlen("EAJava_"));
-			while (Typer.find('_') != string::npos)
-			{
-				cout << Typer.find('_');
-				Typer[Typer.find('_')] = '*';
-			}
-		}
-		else
-		{
-			Typer = std::to_string(IdMap::Insert(Type).second);
-		}
-		Elems.push_back(pair<string, string>(Name, Typer));
+		return this->Elem_type.GetType();
 	}
-	void AddElems(vector<string> Names, vector<string> Types)
+	void AddElem(string Name, string Type)//Добавить элемент
+	{
+		string Typer = RightFormat(Type);
+		Elems.push_back(pair<string, string>(Name, Typer));
+		int TypeInt = atoi(Typer.c_str());
+		if (TypeInt != 0)
+		{
+			if (NeedRealize.find(TypeInt) == NeedRealize.end())
+				NeedRealize.insert(TypeInt);
+		}
+	}
+	void AddElems(vector<string> Names, vector<string> Types)//Добавить элементы
 	{
 		for (unsigned i = 0; i < Names.size(); i++)
 		{
@@ -371,7 +394,7 @@ public:
 			Size++;
 		}
 	}
-	void SetNum()
+	void SetNum()//Переводим цифровые значения в названия
 	{
 		string Type = Elem_type.GetType();//узнаем тип функции
 		int J = atoi(Type.c_str());//если это число
@@ -387,33 +410,41 @@ public:
 			if (J != 0)
 			{
 				auto ThisType = IdMap::IdName.find(ElemType);
+				if (ThisType == IdMap::IdName.end()) return;
 				Elems[i].second=ThisType->second;
 			}
 			else continue;
 		}
 	}
+	set<unsigned long> NeedRealize;
 private:
-	unsigned long Size = 0;
+	unsigned long Size = 0;//Кол-во элементов
 	std::vector<pair<string, string>> Elems;//Элементы и их тип
 };
-
+/*
+Класс для представления отношения вида Ассоциация
+хранит отправителя, точку назначения и имя
+*/
 class Assos :public INumerableElement, public IName
 {
 public:
-	Assos(const std::string& id, const std::string& Name, const std::string& Class, const std::string& Elem)
+	Assos(const std::string& id, const std::string& Name, const std::string& Source, const std::string& Target)
 		:INumerableElement(id), IName(Name)
 	{
-		ElemId = std::to_string(IdMap::Insert(Elem).second);
-		ClassId = std::to_string(IdMap::Insert(Class).second);
+		TargetId = std::to_string(IdMap::Insert(Target).second);
+		SourceId = std::to_string(IdMap::Insert(Source).second);
 	}
-	string GetClass() { return ClassId; }
-	string GetElem() { return ElemId; }
+	string GetSource() { return SourceId; }
+	string GetTarget() { return TargetId; }
 	string GetName() { return Name.ToCode(); }
 private:
-	string ClassId;
-	string ElemId;
+	string SourceId;//
+	string TargetId;//
 };
-
+/*
+Класс для представления "классов" из uml, кроме того представляет интерфейсы
+и другие классоподобные формы.
+*/
 class ClassTrans :public INumerableElement, public IName
 {
 public:
@@ -422,20 +453,29 @@ public:
 	{
 		IdMap::InputName(id, Name);
 	}
-	void AddOper(ClassOperTrans Oper)
+	void AddValue(ClassValueTrans Value)//Добавление член-класса
 	{
-		Operations.push_back(Oper);
-	}
-	void AddValue(ClassValueTrans Value)
-	{
+		int Type = atoi(Value.GetType().c_str());
+		if (Type != 0)
+		{
+			Realize(Type);
+		}
 		Values.push_back(Value);
 	}
-	void Inher(const std::string& Inher)//предки
+	void Inher(const std::string& Inher)//Предки, добавление
 	{
-		string Number = std::to_string(IdMap::Insert(Inher).second);
-		Inherit.push_back(Number);
+		unsigned long Number = IdMap::Insert(Inher).second;
+		Realize(Number);
+		Inherit.push_back(std::to_string(Number));
+
 	}
-	const std::string ToString() const
+	void Realize(int Number)//Пополнение списка нужных для реализации
+	{
+		if (NeedRealize.find(Number) == NeedRealize.end())
+			NeedRealize.insert(Number);
+
+	}
+	const std::string ToString() const//Вывод в строку, не формально
 	{
 		string ReturnOper = "";
 		for (unsigned i = 0; i < Operations.size(); i++)
@@ -462,7 +502,7 @@ public:
 			ReturnInher+
 			 "\n";
 	}
-	const std::string ToCode() const
+	const std::string ToCode() const//к представлению в код
 	{
 		string Return = "class "+ Name.ToCode();
 		for (unsigned i = 0; i < Inherit.size(); i++)
@@ -486,25 +526,40 @@ public:
 			if (Values[i].GetStatic())
 				Return += Values[i].AfterToCode(Name.ToCode());
 		}
+		for (auto i =NeedRealize.cbegin(); i != NeedRealize.cend(); i++)
+		{
+				Return += to_string(*i)+" ";
+		}
 		return
 			Return;
-		/*"\t" + GetVisibilityString(m_visibility);*/
 	}
-	void PutAssos(Assos Assosiation)
+	void PutAssos(Assos Assosiation)//Добавление ассоциации для нашего класса
 	{
+		string AssosElemName = Assosiation.GetTarget();
+		Realize(boost::lexical_cast<int>(Assosiation.GetSource()));
 		for (unsigned i = 0; i < Values.size(); i++)
 		{
-			if (to_string(Values[i].GetLocalId()) == Assosiation.GetElem())
+			if (to_string(Values[i].GetLocalId()) == AssosElemName)
 			{
 				Values[i].SetName("\t"+Assosiation.GetName());
 			}
 		}
 	}
-	void AddOperation(ClassOperTrans Newbie)
+	void AddOperation(ClassOperTrans Newbie)//Добавление операции в класс
 	{
 		Operations.push_back(Newbie);
+		int Type = atoi(Newbie.GetType().c_str());
+		if (Type != 0)
+		{
+			Realize(Type);
+		}
+		for (auto i = Newbie.NeedRealize.cbegin(); i != Newbie.NeedRealize.cend(); i++)//Сравниваем нужные классы для функции и для нашего класса и дополняем, если нужно
+		{
+			if((NeedRealize.find(*i) == NeedRealize.end())&&(*i!=m_id.GetLocalId()))
+				NeedRealize.insert(*i);
+		}
 	}
-	ClassOperTrans GetOperation(string id)
+	ClassOperTrans GetOperation(string id)//Получение операции по id
 	{
 		for (unsigned i = 0; i < Operations.size(); i++)
 		{
@@ -512,7 +567,7 @@ public:
 				return Operations[i];
 		}
 	}
-	void SetNum()
+	void SetNum()//Функция для перехода от цифр к обозначениям из IdMap::IdName
 	{
 		for (unsigned i = 0; i < Operations.size(); i++)
 		{
@@ -522,19 +577,93 @@ public:
 		{
 			Values[i].SetNum();
 		}
-		for (int i = 0; i < Inherit.size(); i++)
+		for (int i = 0; i < Inherit.size(); i++)//Для классов от которых мы наследуем 
 		{
 			int J = atoi(Inherit[i].c_str());
 			if (J != 0)
 			{
 				auto ThisType = IdMap::IdName.find(Inherit[i]);
+				if (ThisType == IdMap::IdName.end()) return;
 				Inherit[i]= ThisType->second;
 			}
 			else continue;
 		}
 	}
 private:
-	vector<ClassOperTrans> Operations;
-	vector<ClassValueTrans> Values;
-	vector<string> Inherit;
+	set<unsigned long> NeedRealize;//Классы которые нужны для использования нашего класса(не только предки), C++ строк к последовательности
+	vector<ClassOperTrans> Operations;//Список операций
+	vector<ClassValueTrans> Values;//Список класс-членов
+	vector<string> Inherit;//Список предков - их номера
+};
+class LinkTrans :public INumerableElement
+{
+public:
+	LinkTrans(const std::string& id, const std::string& From, const std::string& To)
+		:INumerableElement(id)
+	{
+		this->From = IdMap::Insert(From).second;
+		this->To = IdMap::Insert(To).second;
+		//IdMap::InputName(id, Name);
+	}
+	void AddBody(string Body)
+	{
+		this->Body = Body;
+	}
+	string GetId()
+	{
+		return m_id.GetId();
+	}
+	string ToString()
+	{
+		return "Link: " + m_id.ToString() + " "
+			"Body:" + Body + "\n";
+	}
+	bool operator<(const LinkTrans& _Right) const {
+		return this->m_id.GetId() < _Right.m_id.GetId();
+	}
+private:
+	unsigned long From;
+	unsigned long To;
+	string Body;
+};
+class ActivityTrans :public INumerableElement
+{
+public:
+	ActivityTrans(const std::string& id, const std::string& Type)
+		:INumerableElement(id),m_type(Type)
+	{}
+	void AddBody(string Body)
+	{
+		this->Body = Body;
+	}
+	string ToString()
+	{
+		string Output;
+		Output = "Activity:\n" + m_id.ToString()+"\n";
+		for (unsigned i = 0; i < Links.size(); i++)
+			Output += Links[i].ToString();
+		return Output +
+			"Body:" + Body + "\n";
+	}
+	void AddLinkBody(string LinkId,string LinkBody)
+	{
+		for (unsigned i = 0; i < Links.size(); i++)
+			if (Links[i].GetId() == LinkId)
+			{
+				Links[i].AddBody(LinkBody);
+				return;
+			}
+	}
+	string GetId()
+	{
+		return m_id.GetId();
+	}
+	void AddOutgoing(LinkTrans Linker)
+	{
+		Links.push_back(Linker);
+	}
+private:
+	const std::string m_type;
+	vector<LinkTrans> Links;
+	string Body;
 };
