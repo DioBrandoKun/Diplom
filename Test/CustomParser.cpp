@@ -109,10 +109,11 @@ void CustomParser::Parse()
 	}
 	for (unsigned i = 0; i < AllAssos.size(); i++)//Восстанавливаем ассоциации
 	{
+		vector<string> ClassToAssos = AllAssos[i].GetTarget();
 		for (unsigned j = 0; j < AllClass.size(); j++)
 		{
-			if (AllAssos[i].GetTarget() == to_string(AllClass[j].GetLocalId()))
-				AllClass[j].PutAssos(AllAssos[i]);
+			//if (count(ClassToAssos.cbegin(), ClassToAssos.cend(),to_string(AllClass[j].GetLocalId()))>0)
+			AllClass[j].PutAssos(AllAssos[i]);
 		}
 	}
 	for (unsigned i = 0; i < AllClass.size(); i++)//Переход для всех классов от цифр к буквенным определениям
@@ -172,12 +173,12 @@ ClassValueTrans CustomParser::ClassValue(const ptree& pt)
 				if (Info.first == "name") ElemName = Info.second.data();
 				else if (Info.first == "visibility") ElemPrivate = Info.second.data();
 				else if (Info.first == "isStatic") ElemStatic = Info.second.data();
-				else if (Info.first == "association")
+				/*else if (Info.first == "association")
 				{
 					AssociationId = Info.second.data();
 					string AssociationClass = pt.get<std::string>("type.<xmlattr>.xmi:idref");
 					cout <<"Assos:"<< AssociationId << " " << AssociationClass << endl;
-				}
+				}*/
 			}
 		}
 		if (elem.first == "type") ElemType=elem.second.get<std::string>("<xmlattr>.xmi:idref");
@@ -243,6 +244,21 @@ void CustomParser::Realization(const ptree& pt)
 void CustomParser::Assosiation(const ptree& pt)
 {
 	const std::string Id = pt.get<std::string>("<xmlattr>.xmi:id");
+	//ptree Nodes = m_root.get_child("xmi:XMI.xmi:Extension.elements");
+	ptree ElementsPtree;
+	/*BOOST_FOREACH(const ptree::value_type & Items, Nodes)
+	{
+		if (Items.first != "<xmlattr>")
+		{
+			auto ElementsId = Items.second.get<std::string>("<xmlattr>.xmi:idref");
+			if (ElementsId == Id)
+			{
+				ElementsPtree = Items.second;
+				break;
+			}
+		}
+
+	}*/
 	const std::string StrVisibility = pt.get<std::string>("<xmlattr>.visibility");
 	string Name="";
 	string MemberEnd="";

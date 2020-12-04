@@ -423,7 +423,10 @@ private:
 };
 /*
 Класс для представления отношения вида Ассоциация
+так же как и композиция
 хранит отправителя, точку назначения и имя
+для композиции - точка назначения это поле данных класса
+для ассоциации это сам класс
 */
 class Assos :public INumerableElement, public IName
 {
@@ -431,15 +434,17 @@ public:
 	Assos(const std::string& id, const std::string& Name, const std::string& Source, const std::string& Target)
 		:INumerableElement(id), IName(Name)
 	{
-		TargetId = std::to_string(IdMap::Insert(Target).second);
-		SourceId = std::to_string(IdMap::Insert(Source).second);
+		TargetId.push_back(std::to_string(IdMap::Insert(Target).second));
+		SourceId.push_back(std::to_string(IdMap::Insert(Source).second));
 	}
-	string GetSource() { return SourceId; }
-	string GetTarget() { return TargetId; }
+	vector <string> GetSource() { return SourceId; }
+	vector <string> GetTarget() { return TargetId; }
+	void AddSource(const std::string& Source) { SourceId.push_back(std::to_string(IdMap::Insert(Source).second)); }
+	void AddTarget(const std::string& Target) { TargetId.push_back(std::to_string(IdMap::Insert(Target).second)); }
 	string GetName() { return Name.ToCode(); }
 private:
-	string SourceId;//
-	string TargetId;//
+	vector<string> SourceId;//Множество классов которые будут использованы для представления
+	vector<string> TargetId;//Множество классов которые будут использовать представления
 };
 /*
 Класс для представления "классов" из uml, кроме того представляет интерфейсы
@@ -471,6 +476,7 @@ public:
 	}
 	void Realize(int Number)//Пополнение списка нужных для реализации
 	{
+		if (Number == m_id.GetLocalId()) return;
 		if (NeedRealize.find(Number) == NeedRealize.end())
 			NeedRealize.insert(Number);
 
@@ -535,15 +541,27 @@ public:
 	}
 	void PutAssos(Assos Assosiation)//Добавление ассоциации для нашего класса
 	{
-		string AssosElemName = Assosiation.GetTarget();
-		Realize(boost::lexical_cast<int>(Assosiation.GetSource()));
-		for (unsigned i = 0; i < Values.size(); i++)
+		vector<string> AssosList = Assosiation.GetTarget();
+		vector<string> SourceList = Assosiation.GetSource();
+		for (unsigned j = 0; j < AssosList.size(); j++)
 		{
-			if (to_string(Values[i].GetLocalId()) == AssosElemName)
+			string AssosElemName = AssosList[j];
+			for (unsigned i = 0; i < Values.size(); i++)
 			{
-				Values[i].SetName("\t"+Assosiation.GetName());
+				if (to_string(Values[i].GetLocalId()) == AssosElemName)
+				{
+					Values[i].SetName(Assosiation.GetName());
+					for (auto Item = SourceList.cbegin(); Item != SourceList.cend(); Item++)
+					{
+						Realize(boost::lexical_cast<int>(*Item));
+					}
+				}
 			}
 		}
+	}
+	string GetId()
+	{
+		return m_id.GetId();
 	}
 	void AddOperation(ClassOperTrans Newbie)//Добавление операции в класс
 	{

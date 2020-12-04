@@ -1,6 +1,6 @@
 #include "present.h"
 IdMapType  IdMap::m_ids;
-unsigned long IdMap::m_counter=0;
+unsigned long IdMap::m_counter=1;
 map<string, string>IdMap::IdName;
 
 string RightFormat(string Input)//Обрезание типа до нужно для ипользования в дальнейшем

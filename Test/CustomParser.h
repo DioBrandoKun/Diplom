@@ -6,6 +6,7 @@
 #include <boost/container/stable_vector.hpp>
 #include "present.h"
 #include <stdexcept>
+#include <algorithm>
 #include <limits>
 #include <set>
 #include <iostream>
