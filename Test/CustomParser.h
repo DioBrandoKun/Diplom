@@ -18,11 +18,11 @@ class CustomParser
 {
 public:
 	CustomParser(const ptree& tree) : m_root(tree) {}
-	void Parse();
+	void Parse(ptree Pack=ptree(), bool PackSearch = true, bool ElementsSearch = true,bool OtherTree=false);
 	ClassTrans Class(const ptree& tree,int Interface=0);//Будет возвращать кастомный класс, который будет разбираться в соотв конструкторах Интерфейсов, Классов и Нумераторов
 	ClassValueTrans ClassValue(const ptree& pt);
 	ClassOperTrans ClassOperations(const ptree& pt,string ClassName);
-	void Realization(const ptree& pt);
+	void Realizat(const ptree& pt);
 	void Assosiation(const ptree& pt);
 	void Interface(const ptree& pt);
 	void Enum(const ptree& pt);
@@ -31,6 +31,7 @@ public:
 	void Decision(const ptree& pt);
 	void Fork(const ptree& pt);
 	void EdgeCheck(const ptree& pt);
+	void Normalize();
 	string Inhert(const ptree& pt);
 	set<string> Link;
 	vector<string> ActivType = {"Activity","StateNode","DecisionNode","ForkNode"};
@@ -39,4 +40,5 @@ private:
 	vector<ActivityTrans> AllActivity;//Все блоки активности, элементы диаграммы активности не различимы 
 	vector<ClassTrans> AllClass;//Все классы
 	vector<Assos> AllAssos;
+	vector<Realization> AllRealiz;//Все реализации из XMI
 };

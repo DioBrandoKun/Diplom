@@ -1,21 +1,24 @@
 #include "CustomParser.h"
-void CustomParser::Parse()
+void CustomParser::Parse(ptree Pack,bool PackSearch,bool ElementsSearch, bool OtherTree)
 {
 	vector<string> DataType;//Типы данных, так как классы воспринимают другие типы как - нужные для реализации
-	ptree PackageTree = m_root.get_child("xmi:XMI.uml:Model.packagedElement");//Из этой области парсим классы, но здесь мало информации для элементов активности
+	ptree PackageTree;
+	if (OtherTree) 
+		PackageTree = Pack;//Если вложенный Package
+	else PackageTree = m_root.get_child("xmi:XMI.uml:Model.packagedElement");//Из этой области парсим классы, но здесь мало информации для элементов активности
 	//кроме того странное разделение по тегам для множества Package
 	ptree Nodes = m_root.get_child("xmi:XMI.xmi:Extension.elements");//Область для диаграммы активности
+	if(ElementsSearch)
 	BOOST_FOREACH(const ptree::value_type & elem, Nodes.get_child(""))
 	{
 		string Type;
-		try//Для Package без элементов может выдать ошибку
+		try//Первый элемент в элементс для основного пакета проекта не имеет типа, пропускаем его
 		{
 			Type = elem.second.get<std::string>("<xmlattr>.xmi:type");
 		}
-		catch(boost::wrapexcept<boost::property_tree::ptree_bad_path>)//Если проект пустой, даже без пакета
+		catch (boost::wrapexcept<boost::property_tree::ptree_bad_path>)
 		{
-			cout << "Project is empty";
-			return;
+			continue;
 		}
 		if (Type == "uml:Activity")
 		{
@@ -42,6 +45,7 @@ void CustomParser::Parse()
 			cout << endl;
 		}
 	}
+	if(PackSearch)
 	BOOST_FOREACH(const ptree::value_type & diagramTree, PackageTree.get_child(""))
 	{
 		if (diagramTree.first != "<xmlattr>")
@@ -60,7 +64,7 @@ void CustomParser::Parse()
 				}
 				else if (Type == "uml:Realization")
 				{
-					Realization(diagramTree.second);
+					Realizat(diagramTree.second);
 					cout << endl;
 				}
 				else if (Type == "uml:Association")
@@ -90,7 +94,11 @@ void CustomParser::Parse()
 					DataType.push_back(to_string(IdMap::Insert(Name).second));
 					IdMap::InputName(id, Name);
 				}
-				else
+				else  if (Type == "uml:Package")
+				{
+					Parse(diagramTree.second, true, false,true);
+				}
+				else 
 				{
 					cout << "Wrong Elem type:" << Type;
 					return;
@@ -102,18 +110,44 @@ void CustomParser::Parse()
 			}
 		}
 	}
+}
+void CustomParser::Normalize()//Функция для работы с классами и ассоциациями
+{
 	IdMap::Print();
-	for (unsigned i = 0; i < AllActivity.size(); i++)
+	for (unsigned i = 0; i < AllAssos.size(); i++)//Восстанавливаем ассоциации
 	{
-		cout << AllActivity[i].ToString();
+		vector<unsigned long> AssosTion = AllAssos[i].GetTarget();
+		for (unsigned j = 0; j < AllClass.size(); j++)
+		{
+			if (AllClass[j].GetLocalId() == AssosTion[0])
+			{
+				AllClass[j].AddAssos(AllAssos[i]);
+				break;
+			}
+		}
 	}
 	for (unsigned i = 0; i < AllAssos.size(); i++)//Восстанавливаем ассоциации
 	{
-		vector<string> ClassToAssos = AllAssos[i].GetTarget();
+		vector<unsigned long> AssosTion = AllAssos[i].GetTarget();
+		cout << AssosTion[0] << " ";
+	}
+	for (unsigned i = 0; i < AllAssos.size(); i++)//Восстанавливаем ассоциации
+	{
+		vector<unsigned long> ClassToAssos = AllAssos[i].GetTarget();
 		for (unsigned j = 0; j < AllClass.size(); j++)
 		{
-			//if (count(ClassToAssos.cbegin(), ClassToAssos.cend(),to_string(AllClass[j].GetLocalId()))>0)
-			AllClass[j].PutAssos(AllAssos[i]);
+			AllClass[j].AddCompos(AllAssos[i]);
+		}
+	}
+	for (unsigned i = 0; i < AllRealiz.size(); i++)//Восстанавливаем ассоциации
+	{
+		for (unsigned j = 0; j < AllClass.size(); j++)
+		{
+			if (to_string(AllClass[j].GetLocalId()) == AllRealiz[i].GetСlient())
+			{
+				AllClass[j].AddRealiz(AllRealiz[i]);
+				break;//Реализация всегда для одного класса, поэтому мы сразу идем дальше				
+			}
 		}
 	}
 	for (unsigned i = 0; i < AllClass.size(); i++)//Переход для всех классов от цифр к буквенным определениям
@@ -233,52 +267,56 @@ ClassOperTrans CustomParser::ClassOperations(const ptree& pt,string ClassName)
 	Example.AddElems(InputName, Return);
 	return Example;
 }
-void CustomParser::Realization(const ptree& pt)
+void CustomParser::Realizat(const ptree& pt)
 {
 	const std::string Id = pt.get<std::string>("<xmlattr>.xmi:id");
 	const std::string StrVisibility = pt.get<std::string>("<xmlattr>.visibility");
 	const std::string IdSup= pt.get<std::string>("<xmlattr>.supplier");
 	const std::string IdClient = pt.get<std::string>("<xmlattr>.client");
-	cout << "Realization:" << Id << " " << StrVisibility << " " << IdSup << " " << IdClient << endl;
+	Realization NewRealiz(Id, IdSup, IdClient);
+	AllRealiz.push_back(NewRealiz);
 }
 void CustomParser::Assosiation(const ptree& pt)
 {
 	const std::string Id = pt.get<std::string>("<xmlattr>.xmi:id");
-	//ptree Nodes = m_root.get_child("xmi:XMI.xmi:Extension.elements");
 	ptree ElementsPtree;
-	/*BOOST_FOREACH(const ptree::value_type & Items, Nodes)
-	{
-		if (Items.first != "<xmlattr>")
-		{
-			auto ElementsId = Items.second.get<std::string>("<xmlattr>.xmi:idref");
-			if (ElementsId == Id)
-			{
-				ElementsPtree = Items.second;
-				break;
-			}
-		}
-
-	}*/
 	const std::string StrVisibility = pt.get<std::string>("<xmlattr>.visibility");
 	string Name="";
-	string MemberEnd="";
+	vector<string> Member;
+	string Target = "";
+	string Source = "";
 	string OwnedId="";
-	bool Member = true;
-	bool Owned = true;
+	string Type = "";
+	
 	cout << "Assosiation:";
 	BOOST_FOREACH(const ptree::value_type & Info, pt.get_child(""))//Параметры операции
 	{
 		if (Info.first != "<xmlattr>")
 		{
-			if ((Info.first == "memberEnd")&&Member)
+			if ((Info.first == "memberEnd"))
 			{
-				Member = false;
-				MemberEnd = Info.second.get<std::string>("<xmlattr>.xmi:idref");
+				Member.push_back(Info.second.get<std::string>("<xmlattr>.xmi:idref"));
 			}
-			else if ((Info.first == "ownedEnd")&& Owned)
+			else if ((Info.first == "ownedEnd"))
 			{
-				Owned = false;
+				string OwnXmiId = Info.second.get<std::string>("<xmlattr>.xmi:id");
 				OwnedId=Info.second.get<std::string>("type.<xmlattr>.xmi:idref");
+				Type = Info.second.get<std::string>("<xmlattr>.aggregation");
+				for (int i =0; i < Member.size(); i++)
+				{
+					//Ассоциации и агригации являются одинаковыми элементами в uml модели
+					//имеют отличную структуру		
+					//У настоящей ассоциации две memberEnd ссылки являются ссылками на ownedEnd
+					//а в ownedEnd лежат ссылки на класссы
+					//у агрегации же одна memberEnd ссылка нужная нам
+					//а вторую надо раскрыть через ownedEnd
+					if (Member[i] == OwnXmiId)
+					{
+						Member[i] = OwnedId;
+					}
+				}
+				//if (Type == "none")//реаоизовать реакцию на shared и none
+				//	return;
 			}
 		}
 		else BOOST_FOREACH(const ptree::value_type & Elems, Info.second.get_child(""))
@@ -286,7 +324,7 @@ void CustomParser::Assosiation(const ptree& pt)
 			if (Elems.first == "name") Name = Elems.second.data();
 		}
 	}
-	Assos Example(Id, Name, OwnedId, MemberEnd);
+	Assos Example(Id, Name, Member[1], Member[0],Type);
 	AllAssos.push_back(Example);
 	cout << endl;
 }

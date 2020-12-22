@@ -326,9 +326,21 @@ public:
 			Elem_type.SetType(ThisType->second);
 		}
 	}
+	ClassValueTrans& operator=(const ClassValueTrans& Buff)//Функция нужная для работы erase
+	{
+		this->DefaultVal = Buff.DefaultVal;
+		this->NotStated = Buff.NotStated;
+		this->Name = Buff.Name;
+		this->Public = Buff.Public;
+		this->Elem_static = Buff.Elem_static;
+		this->Elem_type = Buff.Elem_type;
+		return *this;
+	}
 private:
 	bool NotStated;//Есть ли дефолтное значение
-	const std::string DefaultVal;//Значение дефолтного значения
+	string DefaultVal;//Значение дефолтного значения
+
+
 };
 /*
 Класс для представления член-методов класса uml
@@ -426,25 +438,66 @@ private:
 так же как и композиция
 хранит отправителя, точку назначения и имя
 для композиции - точка назначения это поле данных класса
-для ассоциации это сам класс
+SourceId - id поля данных
+для ассоциации -
+SourceId - id класса
+для мультиассоциации -
+SourceId - группа id
 */
 class Assos :public INumerableElement, public IName
 {
 public:
-	Assos(const std::string& id, const std::string& Name, const std::string& Source, const std::string& Target)
-		:INumerableElement(id), IName(Name)
+	Assos(const std::string& id, const std::string& Name, const std::string& Source, const std::string& Target, const std::string& Type)
+		:INumerableElement(id), IName(Name),Type(Type)
 	{
-		TargetId.push_back(std::to_string(IdMap::Insert(Target).second));
-		SourceId.push_back(std::to_string(IdMap::Insert(Source).second));
+		TargetId.push_back(IdMap::Insert(Target).second);
+		SourceId.push_back(IdMap::Insert(Source).second);
+		Counter = 1;
 	}
-	vector <string> GetSource() { return SourceId; }
-	vector <string> GetTarget() { return TargetId; }
-	void AddSource(const std::string& Source) { SourceId.push_back(std::to_string(IdMap::Insert(Source).second)); }
-	void AddTarget(const std::string& Target) { TargetId.push_back(std::to_string(IdMap::Insert(Target).second)); }
+	vector <unsigned long> GetSource() { return SourceId; }
+	vector <unsigned long> GetTarget() { return TargetId; }
+	void AddSource(const std::string& Source) 
+	{
+		SourceId.push_back(IdMap::Insert(Source).second); 
+		Counter++;
+	}
+	void AddTarget(const std::string& Target)
+	{ 
+		TargetId.push_back(IdMap::Insert(Target).second); 
+		Counter++;
+	}
+	bool IsMulti()//Мультиассоциация 
+	{
+
+	}
 	string GetName() { return Name.ToCode(); }
+	string Type = "";
 private:
-	vector<string> SourceId;//Множество классов которые будут использованы для представления
-	vector<string> TargetId;//Множество классов которые будут использовать представления
+	unsigned Counter = 0;
+	vector<unsigned long> SourceId;//Множество объектов которые будут использованы для представления 
+	vector<unsigned long> TargetId;//Множество классов которые будут использовать представления
+};
+/*
+Класс для представления uml realization, на самом деле является наследованием объекта
+*/
+class Realization:public INumerableElement
+{
+public:
+	Realization(const std::string& id, const std::string& supplier, const std::string& client)
+		:INumerableElement(id)
+	{
+		Supplier = std::to_string(IdMap::Insert(supplier).second);
+		Сlient = std::to_string(IdMap::Insert(client).second);
+	}
+	string GetSupplier() {
+		return Supplier;
+	}
+	string GetСlient() {
+		return Сlient;
+	}
+private:
+	string Supplier;//Предоставляет функцию
+	string Сlient;//Получает/наследует функцию
 };
 /*
 Класс для представления "классов" из uml, кроме того представляет интерфейсы
@@ -539,21 +592,29 @@ public:
 		return
 			Return;
 	}
-	void PutAssos(Assos Assosiation)//Добавление ассоциации для нашего класса
+	void AddCompos(Assos Assosiation)//Добавление композиции для нашего класса
 	{
-		vector<string> AssosList = Assosiation.GetTarget();
-		vector<string> SourceList = Assosiation.GetSource();
+		vector<unsigned long> AssosList = Assosiation.GetTarget();
+		vector<unsigned long> SourceList = Assosiation.GetSource();
 		for (unsigned j = 0; j < AssosList.size(); j++)
 		{
-			string AssosElemName = AssosList[j];
+			unsigned long AssosElemName = AssosList[j];
 			for (unsigned i = 0; i < Values.size(); i++)
 			{
-				if (to_string(Values[i].GetLocalId()) == AssosElemName)
+				if (Values[i].GetLocalId() == AssosElemName)
 				{
-					Values[i].SetName(Assosiation.GetName());
-					for (auto Item = SourceList.cbegin(); Item != SourceList.cend(); Item++)
+					if (Assosiation.Type == "composite")//Композиция, ставим имя композиции
 					{
-						Realize(boost::lexical_cast<int>(*Item));
+						Values.erase(Values.cbegin() + i);
+						//Values[i].SetName(Assosiation.GetName());
+						//for (auto Item = SourceList.cbegin(); Item != SourceList.cend(); Item++)
+						//{
+						//	Realize(boost::lexical_cast<int>(*Item));
+						//}
+					}
+					else if (Assosiation.Type == "shared")//Агрегация говорит нам, что данный элемент находится в более сложных отношениях чем член класса
+					{
+						Values.erase(Values.cbegin()+i);
 					}
 				}
 			}
@@ -562,6 +623,16 @@ public:
 	string GetId()
 	{
 		return m_id.GetId();
+	}
+	void AddRealiz(Realization NewRealiz)//Реализация по своей сути является наследованием
+	{
+		Inherit.push_back(NewRealiz.GetSupplier());
+	}
+	void AddAssos(Assos Assosiation)//Добавление ассоциации, надо добавить в NeedRealize
+	{
+		vector<unsigned long> listNeed=Assosiation.GetSource();
+		for(int i=0;i< listNeed.size();i++)
+			NeedRealize.insert(listNeed[i]);
 	}
 	void AddOperation(ClassOperTrans Newbie)//Добавление операции в класс
 	{

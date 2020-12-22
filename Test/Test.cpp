@@ -13,10 +13,11 @@ void main()
 {
 
     ptree pt;
-    std::string Path = "B:/Torrent/UML/12345.xml"; //Путь к файлу
+    std::string Path = "B:/Torrent/UML/123456.xml"; //Путь к файлу
     read_xml(Path, pt);
     CustomParser Parser(pt);
     Parser.Parse();
+    Parser.Normalize();
     std::cout << "Hello World!\n";
 }
 
