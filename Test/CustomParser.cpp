@@ -180,6 +180,7 @@ ClassTrans CustomParser::Class(const ptree& pt, int Interface)//1-הכÿ Èםעונפוסא 
 			}
 		}
 	}
+	if (Interface == 1)Example.SetInterface();
 	AllClass.push_back(Example);
 	return Example;
 }
@@ -247,9 +248,9 @@ ClassOperTrans CustomParser::ClassOperations(const ptree& pt,string ClassName)
 		}
 		else BOOST_FOREACH(const ptree::value_type & Data, Info.second.get_child(""))
 		{
-			if (Data.first != "isAbstract")
-				Static = Data.second.data();
-			if (Data.first != "isStatic")
+			if (Data.first == "isAbstract")
+				Abstract = Data.second.data();
+			if (Data.first == "isStatic")
 				Static = Data.second.data();
 		}
 	}
@@ -259,11 +260,12 @@ ClassOperTrans CustomParser::ClassOperations(const ptree& pt,string ClassName)
 		//throw std::exception("Wrong operation format\t" + ClassName + "\t" + StrName);
 	}
 	ClassOperTrans Example(Id,StrName,Static, Return[Return.size()-1], StrVisibility);
-	if (Return.size() > 1)
+	if (Return.size() > 0)
 	{
 		Return.pop_back();
 		InputName.pop_back();
 	}
+	Example.IsVirtual(Abstract);
 	Example.AddElems(InputName, Return);
 	return Example;
 }

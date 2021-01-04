@@ -126,7 +126,7 @@ public:
 	}
 	std::string ToCode() const
 	{
-		std::string IsStatic = (elem_static) ? "static " : "";
+		std::string IsStatic = (elem_static) ? "static\t" : "";
 		return IsStatic;
 	}
 	bool GetStatic() const
@@ -376,12 +376,23 @@ public:
 			ReturnValue = ReturnValue + Elems[i].second+" " + Elems[i].first;
 			if (i != Elems.size() - 1) ReturnValue += ',';
 		}
+		string Virt="";
+		if (Virtual) Virt = "virtual\t";
 		return
 			Public.ToCode() +
+			Virt+
 			Elem_static.ToCode() +
 			Elem_type.ToCode() +
 			Name.ToCode() +"("+
-			ReturnValue+")" + ";\n";
+			ReturnValue+")";
+	}
+	void IsVirtual(string VirtualType)
+	{ 
+		if (VirtualType == "true") Virtual = true;
+	}
+	void SetVirtual()
+	{
+		 Virtual = true;
 	}
 	string GetType()//Получить тип
 	{
@@ -428,8 +439,10 @@ public:
 			else continue;
 		}
 	}
+
 	set<unsigned long> NeedRealize;
 private:
+	bool Virtual = false;
 	unsigned long Size = 0;//Кол-во элементов
 	std::vector<pair<string, string>> Elems;//Элементы и их тип
 };
@@ -561,7 +574,7 @@ public:
 			ReturnInher+
 			 "\n";
 	}
-	const std::string ToCode() const//к представлению в код
+	string ToCode() const//к представлению в код
 	{
 		string Return = "class "+ Name.ToCode();
 		for (unsigned i = 0; i < Inherit.size(); i++)
@@ -574,6 +587,8 @@ public:
 		for (unsigned i = 0; i < Operations.size(); i++)
 		{
 			Return +='\t'+ Operations[i].ToCode();
+			if (Interface) Return += +" = 0 ;\n";
+			else  Return += +";\n";
 		}
 		for (unsigned i = 0; i < Values.size(); i++)
 		{
@@ -648,6 +663,12 @@ public:
 				NeedRealize.insert(*i);
 		}
 	}
+	void SetInterface() 
+	{ 
+		Interface = true;
+		for (auto Start = Operations.begin(); Start != Operations.end(); Start++)
+			Start->SetVirtual();
+	}//Наш класс интерфейс
 	ClassOperTrans GetOperation(string id)//Получение операции по id
 	{
 		for (unsigned i = 0; i < Operations.size(); i++)
@@ -679,6 +700,7 @@ public:
 		}
 	}
 private:
+	bool Interface=false;
 	set<unsigned long> NeedRealize;//Классы которые нужны для использования нашего класса(не только предки), C++ строк к последовательности
 	vector<ClassOperTrans> Operations;//Список операций
 	vector<ClassValueTrans> Values;//Список класс-членов
