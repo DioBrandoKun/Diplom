@@ -6,7 +6,7 @@ map<string, string>IdMap::IdName;
 string RightFormat(string Input)//Обрезание типа до нужно для ипользования в дальнейшем
 {//Либо перевод в числовой формат не стандартного типа
 	string Typer = "";
-	int pos = Input.find("EAJava_");
+	size_t pos = Input.find("EAJava_");
 	if (pos != -1)
 	{
 
@@ -32,8 +32,8 @@ string Format(string Input)
 	string Typer = Input;
 	while (Typer.find('_') != string::npos)
 		{
-			unsigned Left = Typer.find_first_of("_");
-			unsigned Right = Typer.find_last_of("_");
+			size_t Left = Typer.find_first_of("_");
+			size_t Right = Typer.find_last_of("_");
 			string isNumber;
 			if (Left !=  Right)
 			{

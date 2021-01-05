@@ -5,8 +5,8 @@
 #include <boost/numeric/ublas/vector.hpp>
 #include <boost/numeric/ublas/io.hpp>
 #include <boost/lexical_cast.hpp>
-typedef std::map<std::string, unsigned long> IdMapType;
 using namespace std;
+typedef map<string, unsigned long> IdMapType;
 string RightFormat(string Input);
 string Format(string Input);
 /*
@@ -21,28 +21,28 @@ id полученное счетчиком : имя из области
 class IdMap
 {
 public:
-	static const IdMapType::value_type& Insert(const std::string& id)//Добавление нового Id
+	static const IdMapType::value_type& Insert(const string& id)//Добавление нового Id
 	{
 		auto it = m_ids.find(id);
 		if (it == m_ids.end())
 		{
-			return *(m_ids.insert(std::make_pair(id, m_counter++)).first);
+			return *(m_ids.insert(make_pair(id, m_counter++)).first);
 		}
 		else
 		{
 			return *it;
 		}
 	}
-	static void InputName(const std::string& id,const std::string& Name)//Добавление нового имени
+	static const void InputName(const string& id,const string& Name)//Добавление нового имени
 	{
 		auto it =Insert(id);
 		IdName.insert(make_pair(to_string(it.second), Name));
 	}
-	static unsigned long GetLocalId(const std::string& id)
+	static unsigned long GetLocalId(const string& id)
 	{
 		return m_ids.at(id);
 	}
-	static void Print()//Вывод таблицы имен
+	static const void Print()//Вывод таблицы имен
 	{
 		for (auto i = IdName.cbegin(); i != IdName.cend(); i++)
 		{
@@ -63,7 +63,7 @@ private:
 class Id
 {
 public:
-	Id(const std::string& id) : m_valuePair(IdMap::Insert(id))
+	Id(const string& id) : m_valuePair(IdMap::Insert(id))
 	{}
 
 	unsigned long GetLocalId() const
@@ -71,16 +71,16 @@ public:
 		return m_valuePair.second;
 	}
 
-	const std::string& GetId() const
+	const string& GetId() const
 	{
 		return m_valuePair.first;
 	}
 
-	std::string ToString() const
+	string ToString() const
 	{
 		return
 			"xmi:id=\"" + m_valuePair.first + "\"; " +
-			"localId=" + std::to_string(m_valuePair.second) + "\n";
+			"localId=" + to_string(m_valuePair.second) + "\n";
 	}
 
 private:
@@ -92,7 +92,7 @@ private:
 class INumerableElement //Enum
 {
 public:
-	INumerableElement(const std::string& id)
+	INumerableElement(const string& id)
 		: m_id(id)
 	{}
 
@@ -112,21 +112,19 @@ protected:
 class IStaticSkel
 {
 public:
-	IStaticSkel(const std::string& StaticType)
+	IStaticSkel(const string& StaticType)
 	{
-		if (StaticType == "false")
-			elem_static = false;
-		else if (StaticType == "true")
+		if (StaticType == "true")
 			elem_static = true;
 	}
-	std::string ToString() const
+	string ToString() const
 	{
-		std::string IsStatic = (elem_static) ? "static\t" : "not static\t";
+		string IsStatic = (elem_static) ? "static\t" : "not static\t";
 		return "Static=\t"+ IsStatic;
 	}
-	std::string ToCode() const
+	string ToCode() const
 	{
-		std::string IsStatic = (elem_static) ? "static\t" : "";
+		string IsStatic = (elem_static) ? "static\t" : "";
 		return IsStatic;
 	}
 	bool GetStatic() const
@@ -134,7 +132,7 @@ public:
 		return elem_static;
 	}
 private:
-	bool elem_static;
+	 bool elem_static=false;
 };
 /*
 Обертка вокруг IStaticSkel
@@ -142,7 +140,7 @@ private:
 class IStatic 
 {
 public:
-	IStatic(const std::string& StaticType) :Elem_static(StaticType)
+	IStatic(const string& StaticType) :Elem_static(StaticType)
 	{}
 protected:
 	IStaticSkel Elem_static;
@@ -153,27 +151,27 @@ protected:
 class ITypeSkel //: public virtual IElement
 {
 private:
-	std::string elem_type;
+	mutable string elem_type;
 
 public:
 	ITypeSkel() {}
-	ITypeSkel(const std::string& type)
+	ITypeSkel(const string& type)
 	{
 		elem_type = RightFormat(type);
 	}
-	void SetType(string Type)
+	void SetType(const string Type) const
 	{
 		elem_type = Type;
 	}
-	string GetType()
+	string GetType() const
 	{
 		return elem_type;
 	}
-	std::string ToString() const
+	string ToString() const
 	{
 		return "Type=\t"+elem_type + "\t";
 	}
-	std::string ToCode() const
+	string ToCode() const
 	{
 		return elem_type+'\t';
 	}
@@ -186,7 +184,7 @@ class IType
 protected: 
 	ITypeSkel Elem_type;
 public:
-	IType(const std::string& type) :Elem_type(type) {}
+	IType(const string& type) :Elem_type(type) {}
 };
 /*
 Класс для представления имени объектов
@@ -194,22 +192,22 @@ public:
 class NameSkel
 {
 private:
-	 std::string Name;
+	 mutable string Name;
 
 public:
 	NameSkel() {}
-	NameSkel(const std::string& Name):Name(Name)
+	NameSkel(const string& Name):Name(Name)
 	{}
 
-	std::string ToString() const
+	string ToString() const
 	{
 		return "Name=\t"+Name+"\t";
 	}
-	std::string ToCode() const
+	string ToCode() const
 	{
 		return  Name;
 	}
-	void SetName(string NewName)//Установить имя
+	void SetName(string NewName) const //Установить имя
 	{
 		Name = NewName;
 	}
@@ -222,7 +220,7 @@ class IName
 protected:
 	NameSkel Name;
 public:
-	IName(const std::string& Name) :Name(Name)
+	IName(const string& Name) :Name(Name)
 	{}
 };
 /*
@@ -231,17 +229,17 @@ public:
 class IPublicSkel
 {
 public:
-	IPublicSkel(const std::string& Public) :Public(Public) {}
-	std::string ToString() const
+	IPublicSkel(const string& Public) :Public(Public) {}
+	string ToString() const
 	{
 		return "Public=\t" + Public + "\t";
 	}
-	std::string ToCode() const
+	string ToCode() const
 	{
 		return Public + ':';
 	}
 private:
-	std::string Public;
+	 string Public;
 };
 /*
 Обертка вокруг IPublicSkel для дальнейшего наследования
@@ -249,7 +247,7 @@ private:
 class IPublic
 {
 public:
-	IPublic(const std::string& Public):Public(Public){}
+	IPublic(const string& Public):Public(Public){}
 protected:
 	IPublicSkel Public;
 };
@@ -259,14 +257,14 @@ protected:
 class ClassValueTrans:public INumerableElement, public IStatic,public IType,public IName,public IPublic
 {
 public:
-	ClassValueTrans(const std::string& id, const std::string& Name, const std::string& StaticType, const std::string& ElemType, const std::string& DefaulValue, const std::string& Public) :INumerableElement(id),
+	ClassValueTrans(const string& id, const string& Name, const string& StaticType, const string& ElemType, const string& DefaulValue, const string& Public) :INumerableElement(id),
 	IStatic(StaticType), IType(ElemType), DefaultVal(DefaulValue), IName(Name), IPublic(Public)
 	{
 		IdMap::InputName(id, Name);
 		(DefaulValue == "")?NotStated = true:NotStated = false;			
 	}
 
-	const std::string ToString() const
+	const string ToString() const
 	{
 		return
 			"Value:\n" + m_id.ToString()+
@@ -276,7 +274,7 @@ public:
 			 Public.ToString()+
 			"Default=\t"+ DefaultVal+"\n";
 	}
-	const std::string ToCode() const//Кодогенерация
+	const string ToCode() const//Кодогенерация
 	{
 		string Value="";
 		if (!NotStated)//Есть ли значение по умолчанию
@@ -291,7 +289,7 @@ public:
 			Name.ToCode() +
 			Value + ";\n";
 	}
-	const std::string AfterToCode(string ClassName) const//Метод когда наш элемент является статическим и мы должны после класса указать его как глобальную переменную
+	const string AfterToCode(string ClassName) const//Метод когда наш элемент является статическим и мы должны после класса указать его как глобальную переменную
 	{
 		string Value = "";
 		if (!NotStated)
@@ -307,15 +305,15 @@ public:
 	{
 		return this->Elem_static.GetStatic();
 	}
-	void SetName(string NewName)//Установить имя
+	void SetName(string NewName) const//Установить имя
 	{
 		Name.SetName(NewName);
 	}
-	string GetType()//Получить тип функции
+	string GetType() const//Получить тип функции
 	{
 		return this->Elem_type.GetType();
 	}
-	void SetNum()//Параметы из цифр в слова через словарь
+	void SetNum() const//Параметы из цифр в слова через словарь
 	{
 		string Type = Elem_type.GetType();
 		int J = atoi(Type.c_str());
@@ -348,12 +346,12 @@ private:
 class ClassOperTrans :public INumerableElement, public IStatic, public IType, public IName, public IPublic
 {
 public:
-	ClassOperTrans(const std::string& id, const std::string& Name, const std::string& StaticType, const std::string& ElemType, const std::string& Public)
+	ClassOperTrans(const string& id, const string& Name, const string& StaticType, const string& ElemType, const string& Public)
 		:INumerableElement(id),IStatic(StaticType), IType(ElemType), IName(Name), IPublic(Public)
 	{
 		IdMap::InputName(id, Name);
 	}
-	const std::string ToString() const
+	const string ToString() const
 	{
 		string ReturnValue="";
 		for (unsigned i = 0; i < Elems.size(); i++)
@@ -368,7 +366,7 @@ public:
 			ReturnValue+
 			Public.ToString() + "\n";
 	}
-	const std::string ToCode() const//Кодогенерация
+	const string ToCode() const//Кодогенерация
 	{
 		string ReturnValue = "";
 		for (unsigned i = 0; i < Elems.size(); i++)
@@ -386,19 +384,20 @@ public:
 			Name.ToCode() +"("+
 			ReturnValue+")";
 	}
-	void IsVirtual(string VirtualType)
+	void IsVirtual(string VirtualType) const
 	{ 
 		if (VirtualType == "true") Virtual = true;
+		else Virtual = false;
 	}
-	void SetVirtual()
+	void SetVirtual() const //метод для интерфейсов
 	{
 		 Virtual = true;
 	}
-	string GetType()//Получить тип
+	string GetType() const//Получить тип
 	{
 		return this->Elem_type.GetType();
 	}
-	void AddElem(string Name, string Type)//Добавить элемент
+	void AddElem(string Name, string Type) //Добавить элемент
 	{
 		string Typer = RightFormat(Type);
 		Elems.push_back(pair<string, string>(Name, Typer));
@@ -417,7 +416,7 @@ public:
 			Size++;
 		}
 	}
-	void SetNum()//Переводим цифровые значения в названия
+	void SetNum()  //Переводим цифровые значения в названия
 	{
 		string Type = Elem_type.GetType();//узнаем тип функции
 		int J = atoi(Type.c_str());//если это число
@@ -426,7 +425,7 @@ public:
 			auto ThisType=IdMap::IdName.find(Type);
 			Elem_type.SetType(ThisType->second);
 		}
-		for (int i = 0; i < Size; i++)
+		for (unsigned long i = 0; i < Size; i++)
 		{
 			string ElemType = Elems[i].second;
 			J = atoi(ElemType.c_str());//тип параметров
@@ -442,9 +441,9 @@ public:
 
 	set<unsigned long> NeedRealize;
 private:
-	bool Virtual = false;
+	mutable bool Virtual = false;
 	unsigned long Size = 0;//Кол-во элементов
-	std::vector<pair<string, string>> Elems;//Элементы и их тип
+	vector<pair<string, string>> Elems;//Элементы и их тип
 };
 /*
 Класс для представления отношения вида Ассоциация
@@ -460,30 +459,26 @@ SourceId - группа id
 class Assos :public INumerableElement, public IName
 {
 public:
-	Assos(const std::string& id, const std::string& Name, const std::string& Source, const std::string& Target, const std::string& Type)
+	Assos(const string& id, const string& Name, const string& Source, const string& Target, const string& Type)
 		:INumerableElement(id), IName(Name),Type(Type)
 	{
 		TargetId.push_back(IdMap::Insert(Target).second);
 		SourceId.push_back(IdMap::Insert(Source).second);
 		Counter = 1;
 	}
-	vector <unsigned long> GetSource() { return SourceId; }
-	vector <unsigned long> GetTarget() { return TargetId; }
-	void AddSource(const std::string& Source) 
+	vector <unsigned long> GetSource() const { return SourceId; }
+	vector <unsigned long> GetTarget() const { return TargetId; }
+	void AddSource(const string& Source) 
 	{
 		SourceId.push_back(IdMap::Insert(Source).second); 
 		Counter++;
 	}
-	void AddTarget(const std::string& Target)
+	void AddTarget(const string& Target)
 	{ 
 		TargetId.push_back(IdMap::Insert(Target).second); 
 		Counter++;
 	}
-	bool IsMulti()//Мультиассоциация 
-	{
-
-	}
-	string GetName() { return Name.ToCode(); }
+	string GetName() const { return Name.ToCode(); }
 	string Type = "";
 private:
 	unsigned Counter = 0;
@@ -496,21 +491,21 @@ private:
 class Realization:public INumerableElement
 {
 public:
-	Realization(const std::string& id, const std::string& supplier, const std::string& client)
+	Realization(const string& id, const string& supplier, const string& client)
 		:INumerableElement(id)
 	{
-		Supplier = std::to_string(IdMap::Insert(supplier).second);
-		Сlient = std::to_string(IdMap::Insert(client).second);
+		Supplier = to_string(IdMap::Insert(supplier).second);
+		Сlient = to_string(IdMap::Insert(client).second);
 	}
-	string GetSupplier() {
+	string GetSupplier() const {
 		return Supplier;
 	}
-	string GetСlient() {
+	string GetСlient() const {
 		return Сlient;
 	}
 private:
-	string Supplier;//Предоставляет функцию
-	string Сlient;//Получает/наследует функцию
+	 string Supplier;//Предоставляет функцию
+	 string Сlient;//Получает/наследует функцию
 };
 /*
 Класс для представления "классов" из uml, кроме того представляет интерфейсы
@@ -519,7 +514,7 @@ private:
 class ClassTrans :public INumerableElement, public IName
 {
 public:
-	ClassTrans(const std::string& id, const std::string& Name)
+	ClassTrans(const string& id, const string& Name)
 		:INumerableElement(id),  IName(Name)
 	{
 		IdMap::InputName(id, Name);
@@ -533,12 +528,11 @@ public:
 		}
 		Values.push_back(Value);
 	}
-	void Inher(const std::string& Inher)//Предки, добавление
+	void Inher(const string& Inher)//Предки, добавление
 	{
 		unsigned long Number = IdMap::Insert(Inher).second;
 		Realize(Number);
-		Inherit.push_back(std::to_string(Number));
-
+		Inherit.push_back(to_string(Number));
 	}
 	void Realize(int Number)//Пополнение списка нужных для реализации
 	{
@@ -547,7 +541,7 @@ public:
 			NeedRealize.insert(Number);
 
 	}
-	const std::string ToString() const//Вывод в строку, не формально
+	string ToString() const//Вывод в строку, не формально
 	{
 		string ReturnOper = "";
 		for (unsigned i = 0; i < Operations.size(); i++)
@@ -614,28 +608,23 @@ public:
 		for (unsigned j = 0; j < AssosList.size(); j++)
 		{
 			unsigned long AssosElemName = AssosList[j];
-			for (unsigned i = 0; i < Values.size(); i++)
+			for (auto i = Values.cbegin(); i != Values.cend(); i++)
 			{
-				if (Values[i].GetLocalId() == AssosElemName)
+				if (i->GetLocalId() == AssosElemName)
 				{
-					if (Assosiation.Type == "composite")//Композиция, ставим имя композиции
+					if (Assosiation.Type == "composite")//Композиция
 					{
-						Values.erase(Values.cbegin() + i);
-						//Values[i].SetName(Assosiation.GetName());
-						//for (auto Item = SourceList.cbegin(); Item != SourceList.cend(); Item++)
-						//{
-						//	Realize(boost::lexical_cast<int>(*Item));
-						//}
+						Values.erase(i);
 					}
-					else if (Assosiation.Type == "shared")//Агрегация говорит нам, что данный элемент находится в более сложных отношениях чем член класса
+					else if (Assosiation.Type == "shared")//Агрегация
 					{
-						Values.erase(Values.cbegin()+i);
+						Values.erase(i);
 					}
 				}
 			}
 		}
 	}
-	string GetId()
+	string GetId() const
 	{
 		return m_id.GetId();
 	}
@@ -663,18 +652,18 @@ public:
 				NeedRealize.insert(*i);
 		}
 	}
-	void SetInterface() 
+	void SetInterface() const
 	{ 
 		Interface = true;
-		for (auto Start = Operations.begin(); Start != Operations.end(); Start++)
+		for (auto Start = Operations.cbegin(); Start != Operations.cend(); Start++)
 			Start->SetVirtual();
 	}//Наш класс интерфейс
-	ClassOperTrans GetOperation(string id)//Получение операции по id
+	ClassOperTrans GetOperation(const string id) const//Получение операции по id
 	{
-		for (unsigned i = 0; i < Operations.size(); i++)
+		for (auto i = Operations.cbegin(); i != Operations.cend(); i++)
 		{
-			if (to_string(Operations[i].GetLocalId()) == id)
-				return Operations[i];
+			if (to_string(i->GetLocalId()) == id)
+				return *i;
 		}
 	}
 	void SetNum()//Функция для перехода от цифр к обозначениям из IdMap::IdName
@@ -700,7 +689,7 @@ public:
 		}
 	}
 private:
-	bool Interface=false;
+	mutable bool Interface=false;
 	set<unsigned long> NeedRealize;//Классы которые нужны для использования нашего класса(не только предки), C++ строк к последовательности
 	vector<ClassOperTrans> Operations;//Список операций
 	vector<ClassValueTrans> Values;//Список класс-членов
@@ -709,22 +698,20 @@ private:
 class LinkTrans :public INumerableElement
 {
 public:
-	LinkTrans(const std::string& id, const std::string& From, const std::string& To)
-		:INumerableElement(id)
+	LinkTrans(const string& id, const string& From, const string& To)
+		:INumerableElement(id), From(IdMap::Insert(From).second),To(IdMap::Insert(To).second)
 	{
-		this->From = IdMap::Insert(From).second;
-		this->To = IdMap::Insert(To).second;
 		//IdMap::InputName(id, Name);
 	}
-	void AddBody(string Body)
+	void AddBody(string Body) const
 	{
 		this->Body = Body;
 	}
-	string GetId()
+	string GetId() const
 	{
 		return m_id.GetId();
 	}
-	string ToString()
+	string ToString() const
 	{
 		return "Link: " + m_id.ToString() + " "
 			"Body:" + Body + "\n";
@@ -733,21 +720,21 @@ public:
 		return this->m_id.GetId() < _Right.m_id.GetId();
 	}
 private:
-	unsigned long From;
-	unsigned long To;
-	string Body;
+	const unsigned long From;
+	const unsigned long To;
+	mutable string Body;
 };
 class ActivityTrans :public INumerableElement
 {
 public:
-	ActivityTrans(const std::string& id, const std::string& Type)
+	ActivityTrans(const string& id, const string& Type)
 		:INumerableElement(id),m_type(Type)
 	{}
-	void AddBody(string Body)
+	void AddBody(string Body) const
 	{
 		this->Body = Body;
 	}
-	string ToString()
+	string ToString() const
 	{
 		string Output;
 		Output = "Activity:\n" + m_id.ToString()+"\n";
@@ -765,7 +752,7 @@ public:
 				return;
 			}
 	}
-	string GetId()
+	string GetId() const
 	{
 		return m_id.GetId();
 	}
@@ -774,7 +761,7 @@ public:
 		Links.push_back(Linker);
 	}
 private:
-	const std::string m_type;
+	const string m_type;
 	vector<LinkTrans> Links;
-	string Body;
+	mutable string Body;
 };

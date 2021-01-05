@@ -9,7 +9,7 @@
 
 #include "CustomParser.h"
 using boost::property_tree::ptree;//Не находит тип через hpp
-void main()
+int main()
 {
 
     ptree pt;
@@ -19,6 +19,7 @@ void main()
     Parser.Parse();
     Parser.Normalize();
     std::cout << "Hello World!\n";
+    return 0;
 }
 
 // Запуск программы: CTRL+F5 или меню "Отладка" > "Запуск без отладки"
