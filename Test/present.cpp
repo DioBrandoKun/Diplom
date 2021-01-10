@@ -1,9 +1,9 @@
 #include "present.h"
 IdMapType  IdMap::m_ids;
 unsigned long IdMap::m_counter=1;
-map<string, string>IdMap::IdName;
+map<const string, const string>IdMap::IdName;
 
-string RightFormat(string Input)//Обрезание типа до нужно для ипользования в дальнейшем
+const string RightFormat(const string& Input)//Обрезание типа до нужно для ипользования в дальнейшем
 {//Либо перевод в числовой формат не стандартного типа
 	string Typer = "";
 	size_t pos = Input.find("EAJava_");
@@ -27,7 +27,7 @@ XMI формат не позволяет различать символы: <,>,*,[,]
 поэтому чтобы отлечить один тип от другого
 мы смотрим их количество, кроме того между символами [,] должно находиться число
 */
-string Format(string Input)
+const string Format(const string& Input)
 {
 	string Typer = Input;
 	while (Typer.find('_') != string::npos)
@@ -35,7 +35,8 @@ string Format(string Input)
 			size_t Left = Typer.find_first_of("_");
 			size_t Right = Typer.find_last_of("_");
 			string isNumber;
-			if (Left !=  Right)
+
+			if (Left !=  Right && Right-Left>1)
 			{
 				isNumber = Typer.substr(Left + 1,Right-Left);
 				int Num = atoi(isNumber.c_str());
