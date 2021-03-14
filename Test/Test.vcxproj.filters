@@ -24,12 +24,18 @@
     <ClCompile Include="present.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
+    <ClCompile Include="CodeGen.cpp">
+      <Filter>Исходные файлы</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CustomParser.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
     <ClInclude Include="present.h">
+      <Filter>Файлы заголовков</Filter>
+    </ClInclude>
+    <ClInclude Include="CodeGen.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
   </ItemGroup>

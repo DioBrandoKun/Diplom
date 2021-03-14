@@ -8,6 +8,7 @@
 #include <boost/property_tree/xml_parser.hpp>//Парсер XML
 
 #include "CustomParser.h"
+#include "CodeGen.h"
 using boost::property_tree::ptree;//Не находит тип через hpp
 int main()
 {
@@ -18,6 +19,7 @@ int main()
     CustomParser Parser(pt);
     Parser.Parse();
     Parser.Normalize();
+    //CodeGen Codder(Parser.Normalize());
     std::cout << "Hello World!\n";
     return 0;
 }

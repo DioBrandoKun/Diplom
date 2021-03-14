@@ -12,6 +12,7 @@ const string RightFormat(const string& Input)//ќбрезание типа до нужно дл€ иполь
 
 		Typer = Input.substr(strlen("EAJava_"));
 		string Example = Format(Typer);
+		if (Example == "boolean") Example = "bool";//«десь строить услови€ дл€ особых типов, которые в c++ называютс€ по другому
 		return Example;
 	}
 	else

@@ -154,11 +154,13 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="CodeGen.cpp" />
     <ClCompile Include="CustomParser.cpp" />
     <ClCompile Include="present.cpp" />
     <ClCompile Include="Test.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="CodeGen.h" />
     <ClInclude Include="CustomParser.h" />
     <ClInclude Include="present.h" />
   </ItemGroup>

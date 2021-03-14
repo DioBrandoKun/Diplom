@@ -1,13 +1,12 @@
 #include "CustomParser.h"
-std::map <const string, int> mapElements = { {"uml:Activity",0},{"uml:StateNode",1},//для парсинга хештега элементс
-	{"uml:Decision",2},{"uml:Synchronization",3} };
 std::map <const string, int> mapPac =  //для парсинга хештега упакованные элементы
-{ {"uml:Class",0},{"uml:Realization",1},{"uml:Association",2},{"uml:Interface",3},{ "uml:Enumeration",4},{"uml:Activity",5},
-	{ "uml:DataType",6},{"uml:Package",7} };
-void CustomParser::Parse( const ptree& Pack,const bool& PackSearch,const bool& ElementsSearch,const bool& OtherTree)
+{ {"uml:Class",1},{"uml:Realization",2},{"uml:Association",3},{"uml:Interface",4},{ "uml:Enumeration",5},
+	{ "uml:DataType",7},{"uml:Package",8}, {"uml:Activity",8},{"uml:ControlFlow",9},{"uml:Action",10},{"uml:ForkNode",10},{"uml:ActivityFinalNode",10},
+	{"uml:InitialNode",10},{"uml:DecisionNode",10},{"uml:Comment",11} };
+map<const string, int> ActivType = { {"uml:Action",1},{"uml:ForkNode",2},{"uml:InitialNode",3},{"uml:DecisionNode",4},{"uml:ActivityFinalNode",5} };
+void CustomParser::Parse( const ptree& Pack,const bool& OtherTree)
 {
 	ptree PackageTree;
-	ptree Nodes;
 	try//Проверка на правильный формат XMI файла
 	{
 		if (OtherTree)
@@ -19,180 +18,120 @@ void CustomParser::Parse( const ptree& Pack,const bool& PackSearch,const bool& E
 
 		}
 		//кроме того странное разделение по тегам для множества Package
-		Nodes = m_root.get_child("xmi:XMI.xmi:Extension.elements");//Область для диаграммы активности
+		//Nodes = m_root.get_child("xmi:XMI.xmi:Extension.elements");//Область для диаграммы активности
 	}
 	catch (boost::wrapexcept<boost::property_tree::ptree_bad_path>)
 	{
 		cout << "Wrong XMI format\n";
 		return;
 	}
-	if(ElementsSearch)
-	BOOST_FOREACH(const ptree::value_type & elem, Nodes.get_child(""))
-	{
-		string Type;
-		try//Первый элемент в элементс для основного пакета проекта не имеет типа, пропускаем его
-		{
-			Type = elem.second.get<std::string>("<xmlattr>.xmi:type");
-		}
-		catch (boost::wrapexcept<boost::property_tree::ptree_bad_path>)
-		{
-			continue;
-		}
-		switch (mapElements[Type])//с помощью таблицы находим нужный тег
-		{
-			case 0:
-			{
-				cout << "uml:Activity" << endl;
-				Activity(elem.second);
-				cout << endl;
-				break;
-			}
-			case 1:
-			{
-				cout << "uml:StateNode" << endl;
-				StateNote(elem.second);
-				cout << endl;
-				break;
-			}
-			case 2:
-			{
-				cout << "uml:Decision" << endl;
-				Decision(elem.second);
-				cout << endl;
-				break;
-			}
-			case 3:
-			{
-				cout << "uml:Synchronization" << endl;
-				Fork(elem.second);
-				cout << endl;
-				break;
-			}
-			default:
-				break;
-		}
-	}
-	if(PackSearch)
 	BOOST_FOREACH(const ptree::value_type & diagramTree, PackageTree.get_child(""))
 	{
 		if (diagramTree.first != "<xmlattr>")
 		{
-			
-			if (diagramTree.first == "packagedElement")
+			auto Type = diagramTree.second.get<std::string>("<xmlattr>.xmi:type");
+			switch (mapPac[Type])
 			{
-
-				auto Type = diagramTree.second.get<std::string>("<xmlattr>.xmi:type");
-				if(Type!= "uml:Activity")
-				std::cout << Type << std::endl;
-				switch (mapPac[Type])
-				{
-				case 0:
-					{
-						Class(diagramTree.second);
-						cout << endl;
-						break;
-					}
-				case 1:
-					{
-						Realizat(diagramTree.second);
-						cout << endl;
-						break;
-					}
-				case 2:
-					{
-						Assosiation(diagramTree.second);
-						cout << endl;
-						break;
-					}
-				case 3:
-					{
-						Interface(diagramTree.second);
-						cout << endl;
-						break;
-					}
-				case 4:
-					{
-						Interface(diagramTree.second);
-						cout << endl;
-						break;
-					}
-				case 5:
-					{
-						Enum(diagramTree.second);
-						cout << endl;
-						break;
-					}
-				case 6:
-					{
-						BOOST_FOREACH(const ptree::value_type & elem, diagramTree.second.get_child(""))
-							if (elem.first == "edge") EdgeCheck(elem.second);
-						break;
-					}
-				case 7:
-					{
-						string id = diagramTree.second.get<std::string>("<xmlattr>.xmi:id");
-						string Name = diagramTree.second.get<std::string>("<xmlattr>.name");
-						cout << Name;
-						Realized.insert(IdMap::Insert(id).second);
-						IdMap::InputName(id, Name);
-						break;
-					}
-				case 8:
-					{
-						Parse(diagramTree.second, true, false, true); //вложенный Package
-						break;
-					}
-				default:
-					{
-						cout << "Wrong Elem type:" << Type;
-						return;
-					}
-				}
+			case 1:
+			{
+				cout << "uml:Class\n";
+				Class(diagramTree.second);
+				break;
 			}
-			if (diagramTree.first == "edge")
+			case 2:
 			{
-				EdgeCheck(diagramTree.second);
+				cout << "uml:Realization\n";
+				Realizat(diagramTree.second);
+				break;
+			}
+			case 3:
+			{
+				cout << "uml:Association\n";
+				Assosiation(diagramTree.second);
+				break;
+			}
+			case 4:
+			{
+				cout << "uml:Interface\n";
+				Interface(diagramTree.second);
+				break;
+			}
+			case 5:
+			{
+				cout << "uml:Enumeration\n";
+				Enum(diagramTree.second);
+				break;
+			}
+			case 7:
+			{
+				cout << "uml:DataType\n";
+				string id = diagramTree.second.get<std::string>("<xmlattr>.xmi:id");
+				string Name = diagramTree.second.get<std::string>("<xmlattr>.name");
+				cout << Name;
+				Realized.insert(IdMap::Insert(id).second);
+				IdMap::InputName(id, Name);
+				break;
+			}
+			case 8:
+			{
+				Parse(diagramTree.second, true); //вложенный Package
+				break;
+			}
+			case 9:
+			{
+				cout << "uml:ControlFlow\n";
+				LinkParse(diagramTree.second);
+				break;
+			}
+			case 10://Разбирает все блоки диаграммы активности
+			{
+				cout << "Uml action"<< endl;
+				Activity(diagramTree.second);
+				break;
+			}
+			case 11:
+			{
+				cout << "uml:Comment" << endl;
+				string body= diagramTree.second.get<string>("<xmlattr>.body");
+				string id_block= diagramTree.second.get<string>("annotatedElement.<xmlattr>.xmi:idref");
+				unsigned long id_long = IdMap::Insert(id_block).second;
+				comments.push_back(pair<unsigned long, string>(id_long, body));
+				break;
+			}
+			default:
+			{
+				cout << "Wrong Elem type:" << Type << endl;
+				//return;
+			}
 			}
 		}
 	}
 }
-void CustomParser::Normalize()//Функция для работы с классами и ассоциациями
+map<unsigned long, ActivityTrans*> CustomParser::Normalize()//Функция для работы с классами и ассоциациями
 {
 	IdMap::Print();
-	for (unsigned i = 0; i < AllAssos.size(); i++)//Восстанавливаем ассоциации
+	SetLinks();
+	SetComments();
+	for (auto&  assosItem: AllAssos)//Восстанавливаем композиции
 	{
-		vector<unsigned long> AssosTion = AllAssos[i].GetTarget();
-		for (unsigned j = 0; j < AllClass.size(); j++)
+		vector<unsigned long> ClassToAssos = assosItem.GetTarget();
+		for (auto& classItem:  AllClass)
 		{
-			if (AllClass[j].GetLocalId() == AssosTion[0])
+			classItem.AddCompos(assosItem);
+		}
+	}
+	for (auto& realizItem : AllRealiz)
+	{
+		string client = realizItem.GetСlient();
+		auto classReal=find_if(AllClass.begin(), AllClass.end(), [client](auto& classItem)
 			{
-				AllClass[j].AddAssos(AllAssos[i]);
-				break;
-			}
-		}
+				return to_string(classItem.GetLocalId()) == client;
+			});
+		classReal->AddRealiz(realizItem);//Реализация всегда для одного класса, поэтому мы сразу идем дальше
 	}
-	for (unsigned i = 0; i < AllAssos.size(); i++)//Восстанавливаем композиции
+	for (auto& classItem : AllClass)//Переход для всех классов от цифр к буквенным определениям
 	{
-		vector<unsigned long> ClassToAssos = AllAssos[i].GetTarget();
-		for (unsigned j = 0; j < AllClass.size(); j++)
-		{
-			AllClass[j].AddCompos(AllAssos[i]);
-		}
-	}
-	for (unsigned i = 0; i < AllRealiz.size(); i++)//Восстанавливаем а реализации
-	{
-		for (unsigned j = 0; j < AllClass.size(); j++)
-		{
-			if (to_string(AllClass[j].GetLocalId()) == AllRealiz[i].GetСlient())
-			{
-				AllClass[j].AddRealiz(AllRealiz[i]);
-				break;//Реализация всегда для одного класса, поэтому мы сразу идем дальше				
-			}
-		}
-	}
-	for (unsigned i = 0; i < AllClass.size(); i++)//Переход для всех классов от цифр к буквенным определениям
-	{
-		AllClass[i].SetNum();
+		classItem.SetNum();
 	}
 	{
 		unsigned long j = 0;
@@ -230,6 +169,8 @@ void CustomParser::Normalize()//Функция для работы с классами и ассоциациями
 			}
 		}
 	}
+	cout << endl;
+	return AllActivity;
 }
 ClassTrans CustomParser::Class(const ptree& pt, const int& Interface)//1-для Интерфеса 2-для инумератора
 {
@@ -256,7 +197,7 @@ ClassTrans CustomParser::Class(const ptree& pt, const int& Interface)//1-для Инт
 		}
 	}
 	if (Interface == 1)Example.SetInterface();
-	AllClass.push_back(Example);
+	AllClass.push_back(move(Example));
 	return Example;
 }
 string CustomParser::Inhert(const ptree& pt)//Наследование
@@ -311,7 +252,6 @@ ClassOperTrans CustomParser::ClassOperations(const ptree& pt, const string& Clas
 						InputName.push_back(elem.second.data());
 					else if (elem.first == "type")
 					{
-						cout << elem.second.data();
 						Return.push_back(elem.second.data());
 					}
 			}
@@ -346,7 +286,7 @@ void CustomParser::Realizat(const ptree& pt)
 	const std::string IdSup= pt.get<std::string>("<xmlattr>.supplier");
 	const std::string IdClient = pt.get<std::string>("<xmlattr>.client");
 	Realization NewRealiz(Id, IdSup, IdClient);
-	AllRealiz.push_back(NewRealiz);
+	AllRealiz.push_back(move(NewRealiz));
 }
 void CustomParser::Assosiation(const ptree& pt)
 {
@@ -360,7 +300,6 @@ void CustomParser::Assosiation(const ptree& pt)
 	string OwnedId="";
 	string Type = "";
 	
-	cout << "Assosiation:";
 	BOOST_FOREACH(const ptree::value_type & Info, pt.get_child(""))//Параметры операции
 	{
 		if (Info.first != "<xmlattr>")
@@ -397,8 +336,7 @@ void CustomParser::Assosiation(const ptree& pt)
 		}
 	}
 	Assos Example(Id, Name, Member[1], Member[0],Type);
-	AllAssos.push_back(Example);
-	cout << endl;
+	AllAssos.push_back(move(Example));
 }
 void CustomParser::Interface(const ptree& pt)
 {
@@ -408,86 +346,52 @@ void CustomParser::Enum(const ptree& pt)
 {
 	Class(pt, 2);
 }
-void CustomParser::Activity(const ptree& pt,int ActivNum)//1:Final/Start-Node 2:Decision 3:Fork
+void CustomParser::Activity(const ptree& pt)//1:Final/Start-Node 2:Decision 3:Fork
 {
-	const std::string Id = pt.get<std::string>("<xmlattr>.xmi:idref");
-	if(ActivNum!=3)
-		const std::string Name = pt.get<std::string>("<xmlattr>.name");
-	const std::string StrVisibility = pt.get<std::string>("<xmlattr>.scope");
-	ActivityTrans Example(Id, ActivType[ActivNum]);
-	string Code;
-	BOOST_FOREACH(const ptree::value_type & Info, pt.get_child(""))
-	{
-		if (Info.first == "properties")
-			BOOST_FOREACH(const ptree::value_type & Elem, Info.second.get_child("<xmlattr>"))
-		{
-			if (Elem.first == "documentation") Code = Elem.second.data();
-		}
-		if (Info.first == "links")
-		{
-			BOOST_FOREACH(const ptree::value_type & Elem, Info.second.get_child(""))
-			{
-
-				string LinkId = Elem.second.get<string>("<xmlattr>.xmi:id");
-				string Start = Elem.second.get<string>("<xmlattr>.start");
-				string End = Elem.second.get<string>("<xmlattr>.end");
-				LinkTrans LinkXMI(LinkId, Start, End);
-				if (ActivNum == 3)
-				{
-					if(End==Id)
-					if (Link.find(LinkId) == Link.end())
-					{
-						Link.insert(LinkId);
-					}
-				}
-				if (Start == Id)
-					Example.AddOutgoing(LinkXMI);
-			}
-		}
-	}
-	Example.AddBody(Code);
-	AllActivity.push_back(Example);
-	cout << "Activity:" << Id << " " << Code<<endl;
-}
-void CustomParser::StateNote(const ptree& pt)
-{
-	Activity(pt,1);
-}
-void CustomParser::Decision(const ptree& pt)
-{
-	Activity(pt, 2);
-}
-void CustomParser::Fork(const ptree& pt)
-{
-	Activity(pt, 3);
-}
-void CustomParser::EdgeCheck(const ptree& pt)//Поиск тела link
-{//При использовании fork есть необходимость передавать параметры в потоки эти параметры мы и ищем
 	const std::string Id = pt.get<std::string>("<xmlattr>.xmi:id");
-	string Start = pt.get<string>("<xmlattr>.source");
-	string Body;
-	bool Work=false;
-	if (Link.find(Id) != Link.end())
+	string Name;
+	try
 	{
-		Link.erase(Link.find(Id));
-		Work = true;
+		Name = pt.get<std::string>("<xmlattr>.name");
 	}
-	if (!Work) return;
-	BOOST_FOREACH(const ptree::value_type & Elem, pt.get_child(""))
+	catch (boost::wrapexcept<boost::property_tree::ptree_bad_path>)
 	{
-		if (Elem.first == "guard")
-			BOOST_FOREACH(const ptree::value_type & Info, Elem.second.get_child("<xmlattr>"))
-		{
-			if (Info.first == "body")
-				Body = Info.second.data();
-		}
+		Name = "Not stated";
 	}
-	for (unsigned i = 0; i < AllActivity.size(); i++)
+	const std::string type = pt.get<std::string>("<xmlattr>.xmi:type");
+	const std::string StrVisibility = pt.get<std::string>("<xmlattr>.visibility");
+	ActivityTrans* Example=new ActivityTrans(Id, ActivType[type],Name);
+	AllActivity.insert({ Example->GetLocalId(), Example });
+}
+void CustomParser::LinkParse(const ptree& pt)
+{
+	const std::string id = pt.get<std::string>("<xmlattr>.xmi:id");
+	string source = pt.get<string>("<xmlattr>.source");
+	string targer = pt.get<string>("<xmlattr>.target");
+	string body = "";
+	try
 	{
-		if (AllActivity[i].GetId() == Start)
-		{
-			AllActivity[i].AddLinkBody(Id, Body);
-			return;
-		}
+		body = pt.get<std::string>("<xmlattr>.name");
+	}
+	catch (boost::wrapexcept<boost::property_tree::ptree_bad_path>)
+	{
+	}
+	LinkTrans linkXMI(id, source, targer);
+	linkXMI.AddBody(body);
+	allLink.push_back(linkXMI);
+}
+void CustomParser::SetLinks()
+{
+	for (auto& link : allLink)
+	{
+		AllActivity[link.GetSource()]->AddOutgoing(link);
+		AllActivity[link.GetTarget()]->AddIngoing(link);
+	}
+}
+void CustomParser::SetComments()
+{
+	for (auto& pair : comments)
+	{
+		AllActivity[pair.first]->AddBody(pair.second);
 	}
 }
