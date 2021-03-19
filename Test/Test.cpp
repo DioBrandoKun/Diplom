@@ -10,6 +10,7 @@
 #include "CustomParser.h"
 #include "CodeGen.h"
 using boost::property_tree::ptree;//Не находит тип через hpp
+
 int main()
 {
 
@@ -18,9 +19,28 @@ int main()
     read_xml(Path, pt);
     CustomParser Parser(pt);
     Parser.Parse();
-    Parser.Normalize();
-    //CodeGen Codder(Parser.Normalize());
-    std::cout << "Hello World!\n";
+    GraphGen(Parser.Normalize());
+    
+    
+
+    /*ActivityTrans Example("2", 1, "Govono");
+    ActivityTrans Example2("1", 1, "Test");
+    typedef adjacency_list <vecS, vecS, boost::bidirectionalS, std::shared_ptr<ActivityTrans>> vector_graph_t;
+
+
+    // creates a graph with 4 vertices
+    vector_graph_t g;
+
+    // fills the property 'vertex_name_t' of the vertices
+    //boost::put(vertex_name_t(), g, 0, Example); // set the property of a vertex
+    //indexes[Example] = boost::vertex(0, g);     // retrives the associated vertex descriptor
+    //boost::put(vertex_name_t(), g, 1, Example2);
+    //indexes[Example2] = boost::vertex(1, g);
+    const size_t VertexDescriptor = boost::add_vertex(std::make_shared<ActivityTrans>(Example), g);
+    const size_t VertexDescriptor2 = boost::add_vertex(std::make_shared<ActivityTrans>(Example2), g);
+    // adds the edges
+    // indexes[edges[0].first] maps "aaa" to the associated vertex index*/
+    //boost::add_edge(indexes[Example], indexes[Example2], std::make_shared<ActivityTrans>(Example), g);
     return 0;
 }
 

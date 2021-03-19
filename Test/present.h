@@ -857,6 +857,10 @@ public:
 	{
 		inLinks.push_back(Linker);
 	}
+	vector<LinkTrans> GetOutLinks() const
+	{
+		return outLinks;
+	}
 	size_t GetOutCount() const
 	{
 		return outLinks.size();
@@ -867,6 +871,10 @@ public:
 		for (auto link : outLinks)
 			out.push_back(link.GetTarget());
 		return out;
+	}
+	vector<LinkTrans> GetInLinks() const
+	{
+		return inLinks;
 	}
 	vector<unsigned> GetIn() const
 	{
