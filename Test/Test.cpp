@@ -19,7 +19,9 @@ int main()
     read_xml(Path, pt);
     CustomParser Parser(pt);
     Parser.Parse();
-    GraphGen(Parser.Normalize());
+    auto elements = Parser.Normalize();
+    if(elements.size()>0)
+        GraphGen graph(elements);
     
     
 

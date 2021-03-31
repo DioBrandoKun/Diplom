@@ -23,7 +23,7 @@ public:
 	void Parse(const ptree& Pack=ptree(),  const bool& OtherTree=false);//PackSearch - ищем в теге Packagedelements, ElementsSearch - ищем в теге elements
 	map<unsigned long, ActivityTrans*> Normalize();
 private:
-	ClassTrans Class(const ptree& tree, const int& Interface=0);//Будет возвращать кастомный класс, который будет разбираться в соотв конструкторах Интерфейсов, Классов и Нумераторов
+	void Class(const ptree& tree, const int& Interface=0);//Будет возвращать кастомный класс, который будет разбираться в соотв конструкторах Интерфейсов, Классов и Нумераторов
 	ClassValueTrans ClassValue(const ptree& pt);  //Обработка членов класса
 	ClassOperTrans ClassOperations(const ptree& pt, const string& ClassName); //Обработка методов класса
 	void Realizat(const ptree& pt); //Обработка реализаций
@@ -36,8 +36,9 @@ private:
 	string Inhert(const ptree& pt); //Обработка наследования
 	void SetLinks();//добавляет всем элементам класса ActivityTrans outgoing/ingoing
 	void SetComments();//Восстанавливаем код для блоков активности
-	list<LinkTrans> allLink;
+
 	const ptree m_root;
+	list<LinkTrans> allLink;
 	vector<pair<unsigned long, string>> comments;//Блок комментариев, хранит id блока и тело комментария
 	map<unsigned long,ActivityTrans*> AllActivity;//Все блоки активности, элементы диаграммы активности не различимы 
 	vector<ClassTrans> AllClass;//Все классы

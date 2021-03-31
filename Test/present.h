@@ -684,7 +684,7 @@ public:
 			//}
 		}
 	}
-	void AddRealiz(Realization NewRealiz)//Реализация по своей сути является наследованием
+	void AddRealiz(Realization& NewRealiz)//Реализация по своей сути является наследованием
 	{
 		//Inher(NewRealiz.GetSupplier());
 		Realize(stoi(NewRealiz.GetSupplier()));
@@ -742,13 +742,9 @@ public:
 			else continue;
 		}
 	}
-	set<unsigned long> GetRealize() const
+	set<unsigned long>* GetRealize() 
 	{
-		return NeedRealize;
-	}
-	void  SetRealize(set<unsigned long> ChangedRealize) 
-	{
-		NeedRealize = ChangedRealize;
+		return &NeedRealize;
 	}
 private:
 	mutable bool Interface=false;
@@ -774,6 +770,10 @@ public:
 		return "Link: " + m_id.ToString() + " "
 			"Body:" + body + "\n";
 	}
+	string GetBogy() const
+	{
+		return body;
+	}
 	bool operator<(const LinkTrans& _Right) const {
 		return this->GetId() < _Right.GetId();
 	}
@@ -793,6 +793,16 @@ private:
 class ActivityTrans :public INumerableElement,public IName
 {
 public:	
+
+	enum class ActivityType
+	{
+		action,
+		fork,
+		init,
+		decigion,
+		fin
+	};
+
 	ActivityTrans(const string& id, const int& Type, const string& Name)
 		:INumerableElement(id),IName(Name)
 	{
@@ -834,6 +844,10 @@ public:
 	{
 		this->Body = Body;
 	}
+	string GetBody() const
+	{
+		return Body;
+	}
 	string ToString() const
 	{
 		string Output;
@@ -843,12 +857,7 @@ public:
 		return Output +
 			"Body:" + Body + "\n";
 	}
-	void AddLinkBody(const string& LinkId, const string& LinkBody)
-	{
-		auto linkIt=find_if(outLinks.begin(), outLinks.end(), [LinkId](const LinkTrans& link)
-			{ return link.GetId() == LinkId; });
-		linkIt->AddBody(LinkBody);
-	}
+
 	void AddOutgoing(const LinkTrans& Linker)
 	{
 		outLinks.push_back(Linker);
@@ -887,22 +896,13 @@ public:
 	{
 		return inLinks.size();
 	}
-	enum class ActivityType
-	{
-		action,
-		fork,
-		init,
-		decigion,
-		fin
-	};
-	void SetFin()
-	{
-		m_type = ActivityType::fin;
-	}
+
 	ActivityType GetType() const
 	{
 		return  m_type;
 	}
+
+
 private:
 
 	ActivityType m_type;

@@ -93,6 +93,7 @@ void CustomParser::Parse( const ptree& Pack,const bool& OtherTree)
 			{
 				cout << "uml:Comment" << endl;
 				string body= diagramTree.second.get<string>("<xmlattr>.body");
+				
 				string id_block= diagramTree.second.get<string>("annotatedElement.<xmlattr>.xmi:idref");
 				unsigned long id_long = IdMap::Insert(id_block).second;
 				comments.push_back(pair<unsigned long, string>(id_long, body));
@@ -133,6 +134,7 @@ map<unsigned long, ActivityTrans*> CustomParser::Normalize()//Функция для работы
 	{
 		classItem.SetNum();
 	}
+
 	{
 		unsigned long j = 0;
 		vector<unsigned long> realizedJ; //костыль чтобы не реализовывать копирование для класса ClassTrans
@@ -146,16 +148,16 @@ map<unsigned long, ActivityTrans*> CustomParser::Normalize()//Функция для работы
 			for (auto j = realizedJ.cbegin(); j != realizedJ.cend();)//в этом цикле смотрим какие классы нужно реализовать и выписываем класс, если он уже ни от кого не зависит
 			{
 				auto Num = *j;
-				auto NeedRealize = AllClass[Num].GetRealize();
-				for (auto k = NeedRealize.cbegin(); k != NeedRealize.cend(); )
+				auto NeedRealize = AllClass[Num].GetRealize();//Получаем указатель на нужные классу вектор
+				for (auto k = (*NeedRealize).cbegin(); k != (*NeedRealize).cend(); )
 				{
 					if (Realized.find(*k) != Realized.end())
 					{
-						k = NeedRealize.erase(k);
+						k = (*NeedRealize).erase(k);
 					}
 					else k++;
 				}
-				if (NeedRealize.size() == 0)
+				if ((*NeedRealize).size() == 0)
 				{
 					Realized.insert(AllClass[Num].GetLocalId());
 					cout << AllClass[Num].ToCode();
@@ -163,7 +165,6 @@ map<unsigned long, ActivityTrans*> CustomParser::Normalize()//Функция для работы
 				}
 				else
 				{
-					AllClass[Num].SetRealize(NeedRealize);
 					j++;
 				}
 			}
@@ -172,11 +173,19 @@ map<unsigned long, ActivityTrans*> CustomParser::Normalize()//Функция для работы
 	cout << endl;
 	return AllActivity;
 }
-ClassTrans CustomParser::Class(const ptree& pt, const int& Interface)//1-для Интерфеса 2-для инумератора
+void CustomParser::Class(const ptree& pt, const int& Interface)//1-для Интерфеса 2-для инумератора
 {
 	const std::string Id = pt.get<std::string>("<xmlattr>.xmi:id");
 	const std::string StrVisibility = pt.get<std::string>("<xmlattr>.visibility");
-	const string StrName = pt.get<string>("<xmlattr>.name");
+	string StrName ;
+	try
+	{
+		StrName = pt.get<string>("<xmlattr>.name");
+	}
+	catch (boost::wrapexcept<boost::property_tree::ptree_bad_path>)
+	{
+		return;
+	}
 	ClassTrans Example(Id, StrName);
 	BOOST_FOREACH(const ptree::value_type & elem, pt.get_child(""))
 	{
@@ -198,7 +207,6 @@ ClassTrans CustomParser::Class(const ptree& pt, const int& Interface)//1-для Инт
 	}
 	if (Interface == 1)Example.SetInterface();
 	AllClass.push_back(move(Example));
-	return Example;
 }
 string CustomParser::Inhert(const ptree& pt)//Наследование
 {
