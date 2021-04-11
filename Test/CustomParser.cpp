@@ -1,5 +1,5 @@
 #include "CustomParser.h"
-std::map <const string, int> mapPac =  //для парсинга хештега упакованные элементы
+std::map <const string, int> mapPac =  //для парсинга хештега упакованных элементов
 { {"uml:Class",1},{"uml:Realization",2},{"uml:Association",3},{"uml:Interface",4},{ "uml:Enumeration",5},
 	{ "uml:DataType",7},{"uml:Package",8}, {"uml:Activity",8},{"uml:ControlFlow",9},{"uml:Action",10},{"uml:ForkNode",10},{"uml:ActivityFinalNode",10},
 	{"uml:InitialNode",10},{"uml:DecisionNode",10},{"uml:Comment",11} };
@@ -13,12 +13,9 @@ void CustomParser::Parse( const ptree& Pack,const bool& OtherTree)
 			PackageTree = Pack;//Если вложенный Package
 		else
 		{
-
-			PackageTree = m_root.get_child("xmi:XMI.uml:Model.packagedElement");//Из этой области парсим классы, но здесь мало информации для элементов активности
-
+			PackageTree = m_root.get_child("xmi:XMI.uml:Model.packagedElement");
 		}
 		//кроме того странное разделение по тегам для множества Package
-		//Nodes = m_root.get_child("xmi:XMI.xmi:Extension.elements");//Область для диаграммы активности
 	}
 	catch (boost::wrapexcept<boost::property_tree::ptree_bad_path>)
 	{
@@ -102,7 +99,6 @@ void CustomParser::Parse( const ptree& Pack,const bool& OtherTree)
 			default:
 			{
 				cout << "Wrong Elem type:" << Type << endl;
-				//return;
 			}
 			}
 		}
@@ -115,10 +111,16 @@ map<unsigned long, ActivityTrans*> CustomParser::Normalize()//Функция для работы
 	SetComments();
 	for (auto&  assosItem: AllAssos)//Восстанавливаем композиции
 	{
-		vector<unsigned long> ClassToAssos = assosItem.GetTarget();
-		for (auto& classItem:  AllClass)
+		vector<unsigned long> ClassToAssos = assosItem.GetSource();
+		
+		for (auto& classItem: ClassToAssos)//AllClass
 		{
-			classItem.AddCompos(assosItem);
+			auto iter = find_if(AllClass.begin(), AllClass.end(), [classItem](ClassTrans& elem)
+				{
+					return elem.GetLocalId() == classItem;
+				});
+			if(iter!= AllClass.end())
+				iter->AddCompos(assosItem);
 		}
 	}
 	for (auto& realizItem : AllRealiz)
@@ -205,7 +207,7 @@ void CustomParser::Class(const ptree& pt, const int& Interface)//1-для Интерфеса
 			}
 		}
 	}
-	if (Interface == 1)Example.SetInterface();
+	if (Interface == 1 or Interface == 2)Example.SetInterface();
 	AllClass.push_back(move(Example));
 }
 string CustomParser::Inhert(const ptree& pt)//Наследование
@@ -218,9 +220,9 @@ ClassValueTrans CustomParser::ClassValue(const ptree& pt)
 {
 	const std::string Id = pt.get<std::string>("<xmlattr>.xmi:id");
 	const std::string constType = pt.get<std::string>("<xmlattr>.isReadOnly");
-	string ElemName; //
-	string ElemPrivate;// 
-	string ElemStatic="false";// 
+	string ElemName; 
+	string ElemPrivate; 
+	string ElemStatic="false";
 	string AssociationId;
 	string ElemType;
 	string ElemValue="";
@@ -275,7 +277,6 @@ ClassOperTrans CustomParser::ClassOperations(const ptree& pt, const string& Clas
 	if ((Return.size() != InputName.size()) || (Return.size() == 0))//Если операция содержит неправильное колво элементов
 	{
 		cout << "Wrong operation format\t" << ClassName << "\t" << StrName;
-		//throw std::exception("Wrong operation format\t" + ClassName + "\t" + StrName);
 	}
 	ClassOperTrans Example(Id,StrName,Static, Return[Return.size()-1], StrVisibility);
 	if (Return.size() > 0)
@@ -354,7 +355,7 @@ void CustomParser::Enum(const ptree& pt)
 {
 	Class(pt, 2);
 }
-void CustomParser::Activity(const ptree& pt)//1:Final/Start-Node 2:Decision 3:Fork
+void CustomParser::Activity(const ptree& pt)
 {
 	const std::string Id = pt.get<std::string>("<xmlattr>.xmi:id");
 	string Name;

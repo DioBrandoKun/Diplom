@@ -10,12 +10,10 @@ T PopFromStack(std::stack<T>& stack)
 class DfsCodeGenerator : public boost::default_dfs_visitor
 {
 public:
-	DfsCodeGenerator(std::string& outputString) : m_output(outputString), m_currentThread(0)
+	DfsCodeGenerator(std::string& outputString) : m_output(outputString)
 	{
-		std::stack<std::pair<boost::format, Graph::vertex_descriptor>> stack;
-		auto pair = std::pair<boost::format, Graph::vertex_descriptor>(boost::format("%s"), -1);
-		stack.push(pair);
-		m_threads.push_back(stack);
+		elementTable.insert(std::pair<Graph::vertex_descriptor, boost::format>{-1, boost::format("%s")});
+		currentThread = -1;
 	}
 
 	void initialize_vertex(const Graph::vertex_descriptor& s, const Graph& g) const
@@ -33,18 +31,6 @@ public:
 		using namespace boost;
 		std::cout << "Discover: " << v << std::endl;
 		m_history.push_front(v);
-		/*if (out_degree(v, g) == 2 && g[v]->GetType()!= ActivityTrans::ActivityType::fork)
-		{
-			if (m_blockDescriptors.empty() || m_blockDescriptors.top().first != v)
-			{
-				m_currentBlocks.push(IfElse);
-
-				boost::format fmt("%s");
-				m_threads[m_currentThread].push(std::pair<boost::format, Graph::vertex_descriptor>(fmt, v));
-				m_blockDescriptors.push(std::pair<Graph::vertex_descriptor, Graph::vertex_descriptor>(v, v));
-			}
-		}*/
-
 	}
 
 	void examine_edge(const Graph::edge_descriptor& e, const Graph& g) 
@@ -53,6 +39,9 @@ public:
 		if (g[e.m_target]->GetType() == ActivityTrans::ActivityType::fork && g[e.m_target]->GetName()=="end")
 		{
 			forkPoints.push_back(e.m_source);
+			auto iter = find(forkBack.begin(), forkBack.end(), e.m_target);
+			if(iter == forkBack.end())
+				forkBack.push_back(e.m_target);
 		}
 
 	}
@@ -72,34 +61,80 @@ public:
 		{
 			m_currentBlocks.push(While);
 			boost::format fmt("%s");
-			m_currentThread++;
-			if (m_threads.size() <= m_currentThread)
+			graph_traits<Graph>::out_edge_iterator ei, edge_end;
+			Graph::vertex_descriptor out;
+			Graph::vertex_descriptor in;
+			for (tie(ei, edge_end) = out_edges(e.m_target, g); ei != edge_end; ++ei)
 			{
-				std::stack<std::pair<boost::format, Graph::vertex_descriptor>> stack;
-				m_threads.push_back(stack);	
-		}
-
-			m_threads[m_currentThread].push(std::pair<boost::format, Graph::vertex_descriptor>(fmt, e.m_source));
-
-			auto findIter = std::find_if(m_history.begin(), m_history.end(),
-				[&](Graph::vertex_descriptor& v)
+				size_t targ = target(*ei, g);
+				string body = get(edge_all, g)[edge(e.m_target, targ , g).first]->GetBogy();
+				if (body != "")
 				{
-					graph_traits<Graph>::out_edge_iterator ei, edge_end;
-					for (tie(ei, edge_end) = out_edges(e.m_target, g); ei != edge_end; ++ei)
-						if (v == target(*ei, g))
-							return 1;
-					return 0;
+					out = targ;
 				}
-			);
-			//*findIter ?? e.m_source
-			m_blockDescriptors.push(std::pair<Graph::vertex_descriptor, Graph::vertex_descriptor>(e.m_target, *findIter));
+				else if (targ != e.m_target) in = targ;
+			}
+
+			Graph::vertex_descriptor start;
+			graph_traits<Graph>::in_edge_iterator in_start, in_end;
+			for (tie(in_start, in_end) = in_edges(e.m_target, g); in_start != in_end; ++in_start)
+			{
+				size_t circleSt = source(*in_start, g);
+				if (circleSt != e.m_target && get(edge_all, g)[edge(circleSt,e.m_target, g).first]->GetBogy()=="back")
+				{
+					start = circleSt;
+					break;
+				}
+			}
+			blockConst whiledata;
+			whiledata.block = e.m_target;
+			whiledata.out_loop = in;
+			whiledata.loop = out;
+			whiledata.loopstart = start;
+			creator--;
+			currentThread = creator;
+			whiledata.creat = creator;
+			whileInfo.push_back(whiledata);
+
+
+			elementTable.insert(std::pair<Graph::vertex_descriptor, boost::format>{creator, fmt});
+
 		}
 		else if (g[e.m_source]->GetType() == ActivityTrans::ActivityType::decigion)
 		{
 			m_currentBlocks.push(DoWhile);
+			graph_traits<Graph>::out_edge_iterator ei, edge_end;
+			Graph::vertex_descriptor out;
+			for (tie(ei, edge_end) = out_edges(e.m_source, g); ei != edge_end; ++ei)
+			{
+				if (get(edge_all, g)[edge(e.m_source, target(*ei, g), g).first]->GetBogy() == "")
+				{
+					out = target(*ei, g);
+					break;
+				}
+			}
+			graph_traits<Graph>::in_edge_iterator in, inge_end;
+			Graph::vertex_descriptor start;
+			for (tie(in, inge_end) = in_edges(e.m_source, g); in != inge_end; ++in)
+			{
+				size_t circleSt = source(*in, g);
+				if (circleSt != e.m_source)
+				{
+					start = circleSt;
+					break;
+				}
+			}
+			blockConst whiledata;
+			whiledata.block = e.m_source;
+			whiledata.out_loop = out;
+			whiledata.loop = e.m_target;
+			whiledata.loopstart = start;
 			boost::format fmt("%s");
-			m_threads[m_currentThread].push(std::pair<boost::format, Graph::vertex_descriptor>(fmt, e.m_source));
-			m_blockDescriptors.push(std::pair<Graph::vertex_descriptor, Graph::vertex_descriptor>(e.m_target, e.m_source));
+			creator--;
+			whiledata.creat = creator;
+			currentThread = creator;
+			whileInfo.push_back(whiledata);
+			elementTable.insert(std::pair<Graph::vertex_descriptor, boost::format>{creator, fmt});
 		}
 		else
 		{
@@ -111,32 +146,13 @@ public:
 	{
 		std::cout << "Forward or cross edge: " << e << std::endl;
 		if (m_currentBlocks.empty()) return;
-		//if (m_currentBlocks.top() != IfElse && m_currentBlocks.top() != Fork)
-			//	throw(new std::runtime_error("Forward or cross edge without IfElse or Fork!"));
-		/*if (g[e.m_source]->GetType() == ActivityTrans::ActivityType::fork)
-		{
-			boost::format fmt("%s");
-			m_currentThread++;
-			if (m_threads.size() <= m_currentThread)
-			{
-				std::stack<std::pair<boost::format, Graph::vertex_descriptor>> stack;
-				m_threads.push_back(stack);
-			}
-
-			m_threads[m_currentThread].push(std::pair<boost::format, Graph::vertex_descriptor>(fmt, e.m_target));
-		}*/
 		if (m_currentBlocks.top() == IfElse)
 		{
 			boost::format fmt("%s");
-			m_currentThread++;
-			if (m_threads.size() <= m_currentThread)
-			{
-				std::stack<std::pair<boost::format, Graph::vertex_descriptor>> stack;
-				m_threads.push_back(stack);
+			creator--;
+			currentThread = creator;
+			elementTable.insert(std::pair<Graph::vertex_descriptor, boost::format>{creator, fmt});
 			}
-
-			m_threads[m_currentThread].push(std::pair<boost::format, Graph::vertex_descriptor>(fmt, e.m_target));
-		}
 
 	}
 
@@ -144,75 +160,65 @@ public:
 	{
 		using namespace boost;
 		std::cout << "Finish vertex: " << v << std::endl;
-
 		if (g[v]->GetType() == ActivityTrans::ActivityType::action)
 		{
-			if ((out_degree(v, g) == 0)||
-				find(forkPoints.begin(), forkPoints.end(), v) != forkPoints.end()) //значит мы в потоке
+			if ((out_degree(v, g) == 0) ||
+				find(forkPoints.begin(), forkPoints.end(), v) != forkPoints.end()
+				)
 			{
-				int new_size = 1;
-				if (forkSize.size() > 0)
+				if (forkFor)
 				{
-					new_size = forkSize.top() + 1;
-					forkSize.pop();
+					forkForever.push_back(currentThread);
+					forkFor = false;
 				}
-				forkSize.push(new_size);
-				m_currentThread++;
-				if (m_threads.size() <= m_currentThread)
-				{
-					std::stack<std::pair<boost::format, Graph::vertex_descriptor>> stack;
-					m_threads.push_back(stack);
-				}
-				if((out_degree(v, g) == 0)) forkForever.push_back(m_currentThread);
+				if (out_degree(v, g) == 0) 
+					forkFor = true;
 				boost::format fmt("%s");
-				m_threads[m_currentThread].push(std::pair<boost::format, Graph::vertex_descriptor>(fmt, v));
+				creator--;
+				currentThread = creator;
+				elementTable.insert(std::pair<Graph::vertex_descriptor, boost::format>{creator, fmt});
 			}
-			
-			boost::format fmt("%s" + (m_threads[m_currentThread].top().first % "").str());
-			fmt % (g[v]->GetBody() + "\n");
-			const auto pair = std::pair<boost::format, Graph::vertex_descriptor>(boost::format("%s" + fmt.str()), v);
-			m_threads[m_currentThread].top() = pair;
-			/*BOOST_FOREACH(const Effect & effect, g[v]->GetEffects())
+			for (int i = 0; i < whileInfo.size(); i++)
 			{
-				boost::format fmt("%s" + (m_threads[m_currentThread].top().first % "").str());
-				fmt % (effect.GetBody() + "\n");
+				if (v == whileInfo[i].loopstart)
+					currentThread = whileInfo[i].creat;
 
-				const auto pair = std::pair<boost::format, Graph::vertex_descriptor>(boost::format("%s" + fmt.str()), v);
-
-				m_threads[m_currentThread].top() = pair;
-			}*/
+			}
+			boost::format fmt("%s" + (elementTable[currentThread] % "").str());
+			fmt % (g[v]->GetBody() + "\n");
+			elementTable.erase(currentThread);
+			cout << fmt.str();
+			currentThread = v;
+			elementTable.insert(std::pair<Graph::vertex_descriptor, boost::format>{v, boost::format("%s" + fmt.str())});
 		}
 
-		if (!m_currentBlocks.empty() && (m_currentBlocks.top() == DoWhile))
+		if (!m_currentBlocks.empty() && (m_currentBlocks.top() == DoWhile || m_currentBlocks.top() == DoWhileOther))
 		{
-			if (m_blockDescriptors.top().first == v)
+			blockConst circle;
+			bool find_circle = false;
+			for (auto i = whileInfo.begin(); i != whileInfo.end(); i++)
 			{
-				// Do {} while ($guard)
-				boost::format fmt("do\n{\n%s}\nwhile(%s);\n%s");
-				string link_body = get(edge_all, g)[edge(m_blockDescriptors.top().second, v, g).first]->GetBogy();
-				const std::string loopBody = (PopFromStack(m_threads[m_currentThread]).first % "").str();
-				const std::string loop = "%s" +
-					(fmt % loopBody % link_body % (PopFromStack(m_threads[m_currentThread]).first % "").str()).str();
-				const auto pair = std::pair<boost::format, Graph::vertex_descriptor>(boost::format(loop), v);
-
-				m_threads[m_currentThread].push(pair);
-				m_blockDescriptors.pop();
+				if (i->loop == v)
+				{
+					circle = *i;
+					whileInfo.erase(i);
+					find_circle = true;
+					break;
+				}
+			}
+			if (find_circle)
+			{
+				boost::format fmt("do\n{\n%s\n}\nwhile(%s);\n%s");
+				const std::string Loop = (elementTable[circle.loop] % "").str();
+				const std::string linkBody = get(edge_all, g)[edge(circle.block, v, g).first]->GetBogy();
+				const std::string outLoop = (elementTable[circle.out_loop] % "").str();
+				(fmt % Loop % linkBody % outLoop);
+				elementTable.erase(circle.loop);
+				elementTable.erase(circle.out_loop);
+				currentThread = v;
+				elementTable.insert(std::pair<Graph::vertex_descriptor, boost::format>{v, "%s" + fmt.str()});
 				m_currentBlocks.pop();
 				return;
-			}
-		}
-		else if (!m_currentBlocks.empty() && (m_currentBlocks.top() == While))
-		{
-			if (m_blockDescriptors.top().second == v)
-			{
-				// While ($guard) { }
-				boost::format fmt("while(%s)\n{\n%s}\n");
-				string link_body = get(edge_all, g)[edge(m_blockDescriptors.top().first, v, g).first]->GetBogy();
-				const std::string loop = (fmt % link_body % (PopFromStack(m_threads[m_currentThread]).first % "").str()).str() + "%s";
-
-				const auto pair = std::pair<boost::format, Graph::vertex_descriptor>(boost::format(loop), v);
-
-				m_threads[m_currentThread].push(pair);
 			}
 		}
 
@@ -222,9 +228,9 @@ public:
 				throw(new std::runtime_error("ActivityFinalNode must have no output edges!"));
 			string body;
 		    body = "%s" + g[v]->GetBody() + "\n}\n";
-			format fmt((m_threads[m_currentThread].top().first % body).str());
-			auto pair = std::pair<format, size_t>(fmt, v);
-			m_threads[m_currentThread].top() = pair;
+			elementTable.erase(-1);
+			currentThread = v;
+			elementTable.insert(std::pair<Graph::vertex_descriptor, boost::format>{v, body});
 
 		}
 		else if (g[v]->GetType() == ActivityTrans::ActivityType::init)
@@ -232,7 +238,8 @@ public:
 			if (in_degree(v, g))
 				throw(new std::runtime_error("InitialNode must have no input edges!"));
 			string body = g[v]->GetBody() + "\n{\n";
-			m_output = (m_threads[m_currentThread].top().first % body).str();
+			m_output = (elementTable[currentThread] % body).str();
+			return;
 		}
 		else if (g[v]->GetType() == ActivityTrans::ActivityType::decigion)
 		{
@@ -245,158 +252,205 @@ public:
 
 			if (!m_currentBlocks.empty() && (m_currentBlocks.top() == While))
 			{
-				if (!m_blockDescriptors.empty() && (m_threads[m_currentThread].top().second == m_blockDescriptors.top().first))
+				blockConst circle;
+				bool find_while = false;
+				for (auto i= whileInfo.begin();i!= whileInfo.end();i++)
 				{
-					const std::string notLoop = (m_threads[m_currentThread - 1].top().first % "").str();
-					format fmt("%s" + (m_threads[m_currentThread].top().first % notLoop).str());
-					cout << notLoop;
-					m_threads.erase(m_threads.begin()+m_currentThread);
-					m_currentThread--;
-
-					auto pair = std::pair<format, size_t>(fmt, v);
-					m_threads[m_currentThread].top() = pair;
-					m_blockDescriptors.pop();
-					m_currentBlocks.pop();
-					return;
+					if (i->block == v)
+					{
+						circle = *i;
+						find_while = true;
+						whileInfo.erase(i);
+						break;
+					}
 				}
-				else if (!m_blockDescriptors.empty() && (m_threads[m_currentThread - 1].top().second == m_blockDescriptors.top().first))
+				if (find_while) 
 				{
-					const std::string notLoop = (m_threads[m_currentThread].top().first % "").str();
-					format fmt("%s" + (m_threads[m_currentThread - 1].top().first % notLoop).str());
-					m_threads.erase(m_threads.begin() + m_currentThread);
-					m_currentThread--;
-					auto pair = std::pair<format, size_t>(fmt, v);
-					m_threads[m_currentThread].top() = pair;
-					m_blockDescriptors.pop();
+					const std::string Loop = (elementTable[circle.loop] % "").str();
+					const std::string linkBody = get(edge_all, g)[edge(v, circle.loop, g).first]->GetBogy();
+					const std::string outLoop = (elementTable[circle.out_loop] % "").str();
+
+					format fmtloop("while(%s)\n{\n%s}\n%s");
+					(fmtloop % linkBody % Loop % outLoop);
+					elementTable.erase(circle.loop);
+					elementTable.erase(circle.out_loop);
+					currentThread = v;
+					elementTable.insert(std::pair<Graph::vertex_descriptor, boost::format>{v, "%s" + fmtloop.str()});
 					m_currentBlocks.pop();
 					return;
 				}
 			}
 			else if (!m_currentBlocks.empty() && (m_currentBlocks.top() == IfElse))
 			{
-				const std::string Thread1 = (m_threads[m_currentThread].top().first % "").str();
-				const string linkBody = get(edge_all, g)[edge(v, m_threads[m_currentThread].top().second, g).first]->GetBogy();
-				
-
-				const std::string Thread2 = (m_threads[(m_currentThread - 1)>0? m_currentThread - 1:0].top().first % "").str();
-				cout << edge(v, m_threads[m_currentThread - 1].top().second, g).first;
-				const string linkBody2 = get(edge_all, g)[edge(v, m_threads[m_currentThread - 1].top().second, g).first]->GetBogy();
-				
+				graph_traits<Graph>::out_edge_iterator ei, edge_end;
+				size_t taget;
+				for (tie(ei, edge_end) = out_edges(v, g); ei != edge_end; ++ei)
+				{
+					size_t point=target(*ei,g);
+					if (point != v && point != currentThread)
+					{
+						taget = point;
+						break;
+					}
+				}
+				const std::string Thread1 = (elementTable[currentThread] % "").str();
+				const std::string Thread2 = (elementTable[taget] % "").str();
+				const string linkBody1 = get(edge_all, g)[edge(v, currentThread, g).first]->GetBogy();
+				const string linkBody2 = get(edge_all, g)[edge(v, taget, g).first]->GetBogy();
 				format fmt("if (%s)\n{\n%s}\nelse if (%s)\n{\n%s}\n%s");
-				m_threads[m_currentThread - 1].pop();
-				const std::string Block = "%s" + (fmt % linkBody % Thread1 % linkBody2 % Thread2 % (m_threads[m_currentThread - 1].top().first % "").str()).str();
-				m_threads[m_currentThread].pop();
-				m_currentThread--;
-
-				auto pair = std::pair<format, size_t>(boost::format(Block), v);
-				m_threads[m_currentThread].top() = pair;
-				m_blockDescriptors.pop();
+				size_t back_pos = ifelseBack.top();
+				const std::string Block = "%s" + (fmt % linkBody1 % Thread1 % linkBody2 % Thread2 % (elementTable[back_pos] %  "").str()).str();
+				elementTable.erase(back_pos);
+				elementTable.erase(taget);
+				elementTable.erase(currentThread);
+				currentThread = v;
+				elementTable.insert(std::pair<Graph::vertex_descriptor, boost::format>{v, Block});
+				ifelseBack.pop();
+				m_currentBlocks.pop();
+			}
+			else if (!m_currentBlocks.empty() && (m_currentBlocks.top() == If))
+			{
+				const std::string Thread1 = (elementTable[currentThread] % "").str();
+				const string linkBody1 = get(edge_all, g)[edge(v, currentThread, g).first]->GetBogy();
+				format fmt("if (%s)\n{\n%s}\n%s");
+				size_t back_pos = ifelseBack.top();
+				const std::string Block = "%s" + (fmt % linkBody1 % Thread1 % (elementTable[back_pos] % "").str()).str();
+				elementTable.erase(back_pos);
+				elementTable.erase(currentThread);
+				currentThread = v;
+				elementTable.insert(std::pair<Graph::vertex_descriptor, boost::format>{v, Block});
+				ifelseBack.pop();
 				m_currentBlocks.pop();
 			}
 		}
-		if (g[v]->GetType() == ActivityTrans::ActivityType::fork && in_degree(v, g) == 1)
+		if (g[v]->GetType() == ActivityTrans::ActivityType::fork && in_degree(v, g) == 1 && g[v]->GetName() != "end")
 		{
-			auto fork_size = forkSize.top();
-			auto main = 0;
-			string Block = "";
-			vector<string> wait;
-			//vector<string> forkBody
-			int end = m_currentThread - fork_size;
-			for (int i = m_currentThread; i > end; i--)
+			if (forkFor)
 			{
-				string linkBody="";
-				string body="";
-				if(i!= main)
-				if (i >= 0)
+				forkForever.push_back(currentThread);
+				forkFor = false;
+			}
+			graph_traits<Graph>::out_edge_iterator ei, edge_end;
+			string Block = "";
+			size_t main = -1;
+			vector<string> wait;
+			for (tie(ei, edge_end) = out_edges(v, g); ei != edge_end; ++ei)
+			{
+				size_t point = target(*ei, g);
+				if (point != v)
 				{
-					bool join=true;
-					auto iter_fork=std::find(forkForever.begin(), forkForever.end(), i);
-					for (int j = 0; j < forkForever.size(); j++)
-					{
-						if (forkForever[j] == i)
-						{
-							join = false;
-							break;
-						}
-					}
-					//format fmt("if (%s)\n{\n%s}\nelse if (%s)\n{\n%s}\n%s");
+					string linkBody = "";
+					string body = "";
+					auto iter_forever = std::find(forkForever.begin(), forkForever.end(), point);
 					format fmt("std::thread thread%s([%s]()\n{\n%s});\n");
 					format waitfmt("thread%s.join();\n");
-					body = (m_threads[i].top().first % "").str();
-					//cout << m_threads[i].top().first << m_threads[i].top().second;
-					linkBody = get(edge_all, g)[edge(v, m_threads[i].top().second, g).first]->GetBogy();
+					body = (elementTable[point] % "").str();
+					linkBody = get(edge_all, g)[edge(v, point, g).first]->GetBogy();
 					if ((linkBody == "main"))
 					{
-						main = i;
+						main = point;
 						continue;
 					}
 					thread_name++;
-					if(join)
-						wait.push_back((waitfmt% thread_name).str());
+					if (iter_forever == forkForever.end())
+					{
+						wait.push_back((waitfmt % thread_name).str());
+					}
+					else forkForever.erase(iter_forever);
 					Block += (fmt % thread_name % linkBody % body).str();
-					
+					elementTable.erase(point);
+
 				}
 			}
-
-			Block += (m_threads[main].top().first % "").str();
+			Block += (elementTable[main] % "").str();
+			elementTable.erase(main);
 			for (auto iter = wait.begin(); iter != wait.end(); iter++)
 				Block += *iter;
-			for (int i = m_currentThread; i > end; i--)
-				m_threads[i].pop();
-			if (m_currentThread < 0) m_currentThread = 0;
+			currentThread = v;
+			auto back= forkBack.begin()+ forkBack.size()-1;
+			Block += (elementTable[*back] % "").str();
+			elementTable.erase(*back);
+			auto pair = std::pair<size_t,format>(v, boost::format("%s"+Block));
+			elementTable.insert(pair);
 
-			Block+= "%s";
-			m_currentThread = end;
-			Block += (m_threads[m_currentThread].top().first % "").str();
-			auto pair = std::pair<format, size_t>(boost::format(Block), v);
-			m_threads[m_currentThread].top()=pair;
-			forkSize.pop();
+		}	
+		if (g[v]->GetType() == ActivityTrans::ActivityType::fork)
+		{
+			format fmt = elementTable[currentThread];
+			elementTable.erase(currentThread);
+			currentThread = v;
+			elementTable.insert(std::pair<Graph::vertex_descriptor, boost::format>{v, fmt});
+			return;
 		}
 		if (in_degree(v, g) >= 2)
 		{
 			if (g[v]->GetType() != ActivityTrans::ActivityType::fork)
 			{
-				if (m_blockDescriptors.empty() || m_blockDescriptors.top().first != v)
+				graph_traits<Graph>::in_edge_iterator ei, edge_end;
+				bool ifblock = false;//Блок являеться только блоком if
+				for (tie(ei, edge_end) = in_edges(v, g); ei != edge_end; ++ei)
 				{
+					if (g[source(*ei, g)]->GetType() == ActivityTrans::ActivityType::decigion)
+						ifblock = !ifblock;
+				}
+				if (!ifblock)
+				{
+					//запоминаю номер блока потока в который вернусь
+					ifelseBack.push(v);
+					creator--;
 					m_currentBlocks.push(IfElse);
-
 					boost::format fmt("%s");
-					m_threads[m_currentThread].push(std::pair<boost::format, Graph::vertex_descriptor>(fmt, v));
-					m_blockDescriptors.push(std::pair<Graph::vertex_descriptor, Graph::vertex_descriptor>(v, v));
+					currentThread = creator;
+					elementTable.insert(std::pair<Graph::vertex_descriptor, boost::format>{creator, fmt});
+				}
+				else
+				{
+					ifelseBack.push(v);
+					creator--;
+					m_currentBlocks.push(If);
+					boost::format fmt("%s");
+					currentThread = creator;
+					elementTable.insert(std::pair<Graph::vertex_descriptor, boost::format>{creator, fmt});
 				}
 			}
-			/*else if(m_blockDescriptors.empty() || m_blockDescriptors.top().first != v)
-			{
-				m_currentThread++;
-				m_currentBlocks.push(Fork);
-				forkSize.push(in_degree(v, g)-1);
-				boost::format fmt("%s");
-				if (m_threads.size() <= m_currentThread)
-				{
-					std::stack<std::pair<boost::format, Graph::vertex_descriptor>> stack;
-					m_threads.push_back(stack);
-				}
-				m_threads[m_currentThread].push(std::pair<boost::format, Graph::vertex_descriptor>(fmt, v));
-			}*/
 		}
-	}
-
+	}	
 private:
 	enum BlockType
 	{
 		DoWhile,
+		DoWhileOther,
 		While,
 		IfElse,
-		Fork
+		Fork,
+		If
 	};
+	struct blockConst
+	{
+		size_t loop;
+		size_t out_loop;
+		size_t block;
+		size_t creat;
+		size_t loopstart;
+	};
+	std::stack<BlockType> m_currentBlocks;	//здесь хранить пару тип, номер блока 
+	//так как if else могут быть только в двух разных потоках?, но как их найти
+	//одна часть будет лежать в текущем элемене на обработке, вторую можно найти
+	//для if else будет стек потока возврата
+	std::stack<Graph::vertex_descriptor> ifelseBack;
+	size_t creator = -2;//счетчик для доп потоков
+	std::map<Graph::vertex_descriptor, boost::format> elementTable;
+	Graph::vertex_descriptor currentThread;
+	std::vector < blockConst> whileInfo;//Хранит информацию о циклах, начале и завершении 
+	std::vector<size_t> forkBack;
 
-	std::stack<BlockType> m_currentBlocks;
-	std::stack<std::pair<Graph::vertex_descriptor, Graph::vertex_descriptor>> m_blockDescriptors;
+	//хранить в стеке структуру типа блок левая часть (цикл) правая часть (выход из цикла)
 	std::stack<int> forkSize;
 	std::vector<int> forkForever;
+	bool forkFor = false;
 	unsigned thread_name = 0;
-	int m_currentThread;
-	std::vector<std::stack<std::pair<boost::format, Graph::vertex_descriptor>>> m_threads;
+
+
 	std::vector<int> forkPoints;
 	std::list<Graph::vertex_descriptor> m_history;
 
