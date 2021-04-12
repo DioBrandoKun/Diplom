@@ -30,7 +30,6 @@ public:
 	{
 		using namespace boost;
 		std::cout << "Discover: " << v << std::endl;
-		m_history.push_front(v);
 	}
 
 	void examine_edge(const Graph::edge_descriptor& e, const Graph& g) 
@@ -43,7 +42,6 @@ public:
 			if(iter == forkBack.end())
 				forkBack.push_back(e.m_target);
 		}
-
 	}
 
 	void tree_edge(const Graph::edge_descriptor& e, const Graph& g) const
@@ -90,13 +88,11 @@ public:
 			whiledata.block = e.m_target;
 			whiledata.out_loop = in;
 			whiledata.loop = out;
-			whiledata.loopstart = start;
+			whiledata.loopstart = e.m_source;
 			creator--;
 			currentThread = creator;
 			whiledata.creat = creator;
 			whileInfo.push_back(whiledata);
-
-
 			elementTable.insert(std::pair<Graph::vertex_descriptor, boost::format>{creator, fmt});
 
 		}
@@ -192,7 +188,7 @@ public:
 			elementTable.insert(std::pair<Graph::vertex_descriptor, boost::format>{v, boost::format("%s" + fmt.str())});
 		}
 
-		if (!m_currentBlocks.empty() && (m_currentBlocks.top() == DoWhile || m_currentBlocks.top() == DoWhileOther))
+		if (!m_currentBlocks.empty() && (m_currentBlocks.top() == DoWhile))
 		{
 			blockConst circle;
 			bool find_circle = false;
@@ -330,6 +326,7 @@ public:
 				forkForever.push_back(currentThread);
 				forkFor = false;
 			}
+			static unsigned thread_name = 0;
 			graph_traits<Graph>::out_edge_iterator ei, edge_end;
 			string Block = "";
 			size_t main = -1;
@@ -419,7 +416,6 @@ private:
 	enum BlockType
 	{
 		DoWhile,
-		DoWhileOther,
 		While,
 		IfElse,
 		Fork,
@@ -427,34 +423,23 @@ private:
 	};
 	struct blockConst
 	{
-		size_t loop;
-		size_t out_loop;
-		size_t block;
-		size_t creat;
-		size_t loopstart;
+		size_t loop;													//Блок конца цикла
+		size_t out_loop;												//Блок выхода из цикла
+		size_t block;													//Блок создающий цикл
+		size_t creat;													//Поток создания цикла
+		size_t loopstart;												//Блок начала цикла
 	};
-	std::stack<BlockType> m_currentBlocks;	//здесь хранить пару тип, номер блока 
-	//так как if else могут быть только в двух разных потоках?, но как их найти
-	//одна часть будет лежать в текущем элемене на обработке, вторую можно найти
-	//для if else будет стек потока возврата
-	std::stack<Graph::vertex_descriptor> ifelseBack;
-	size_t creator = -2;//счетчик для доп потоков
-	std::map<Graph::vertex_descriptor, boost::format> elementTable;
-	Graph::vertex_descriptor currentThread;
-	std::vector < blockConst> whileInfo;//Хранит информацию о циклах, начале и завершении 
-	std::vector<size_t> forkBack;
-
-	//хранить в стеке структуру типа блок левая часть (цикл) правая часть (выход из цикла)
-	std::stack<int> forkSize;
-	std::vector<int> forkForever;
-	bool forkFor = false;
-	unsigned thread_name = 0;
-
-
-	std::vector<int> forkPoints;
-	std::list<Graph::vertex_descriptor> m_history;
-
-	std::string& m_output;
+	std::stack<BlockType> m_currentBlocks;								//Хранит стек событий
+	std::stack<Graph::vertex_descriptor> ifelseBack;					//Хранит стек возвращения для блоко if
+	size_t creator = -2;												//Счетчик для доп потоков
+	std::map<Graph::vertex_descriptor, boost::format> elementTable;		//Таблица обхода, хранит текущих код для разных ветвей
+	Graph::vertex_descriptor currentThread;								//Текущая ветвь 
+	std::vector < blockConst> whileInfo;								//Хранит информацию о циклах, начале и завершении 
+	std::vector<size_t> forkBack;										//хранит стек возвращения для блока fork
+	std::vector<int> forkForever;										//Хранит ветви, которые не присоединяются к коду программы 
+	bool forkFor = false;												//Определяет является ли текущая ветвь без присоединения
+	std::vector<int> forkPoints;										//Хранит номера ветвей, которые разделяются блоков fork
+	std::string& m_output;												//Вывод
 };
 void GraphGen::AcivInit()
 {   //Поиск вершины с типом ActivityType::init
