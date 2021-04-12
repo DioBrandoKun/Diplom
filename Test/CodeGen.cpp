@@ -73,17 +73,7 @@ public:
 				else if (targ != e.m_target) in = targ;
 			}
 
-			Graph::vertex_descriptor start;
-			graph_traits<Graph>::in_edge_iterator in_start, in_end;
-			for (tie(in_start, in_end) = in_edges(e.m_target, g); in_start != in_end; ++in_start)
-			{
-				size_t circleSt = source(*in_start, g);
-				if (circleSt != e.m_target && get(edge_all, g)[edge(circleSt,e.m_target, g).first]->GetBogy()=="back")
-				{
-					start = circleSt;
-					break;
-				}
-			}
+
 			blockConst whiledata;
 			whiledata.block = e.m_target;
 			whiledata.out_loop = in;
