@@ -75,13 +75,13 @@ public:
 
 
 			blockConst whiledata;
-			whiledata.block = e.m_target;
+			whiledata.block_loop = e.m_target;
 			whiledata.out_loop = in;
-			whiledata.loop = out;
-			whiledata.loopstart = e.m_source;
+			whiledata.end_loop = out;
+			whiledata.start_loop = e.m_source;
 			creator--;
 			currentThread = creator;
-			whiledata.creat = creator;
+			whiledata.creat_loop = creator;
 			whileInfo.push_back(whiledata);
 			elementTable.insert(std::pair<Graph::vertex_descriptor, boost::format>{creator, fmt});
 
@@ -111,13 +111,13 @@ public:
 				}
 			}
 			blockConst whiledata;
-			whiledata.block = e.m_source;
+			whiledata.block_loop = e.m_source;
 			whiledata.out_loop = out;
-			whiledata.loop = e.m_target;
-			whiledata.loopstart = start;
+			whiledata.end_loop = e.m_target;
+			whiledata.start_loop = start;
 			boost::format fmt("%s");
 			creator--;
-			whiledata.creat = creator;
+			whiledata.creat_loop = creator;
 			currentThread = creator;
 			whileInfo.push_back(whiledata);
 			elementTable.insert(std::pair<Graph::vertex_descriptor, boost::format>{creator, fmt});
@@ -166,8 +166,8 @@ public:
 			}
 			for (int i = 0; i < whileInfo.size(); i++)
 			{
-				if (v == whileInfo[i].loopstart)
-					currentThread = whileInfo[i].creat;
+				if (v == whileInfo[i].start_loop)
+					currentThread = whileInfo[i].creat_loop;
 
 			}
 			boost::format fmt("%s" + (elementTable[currentThread] % "").str());
@@ -184,7 +184,7 @@ public:
 			bool find_circle = false;
 			for (auto i = whileInfo.begin(); i != whileInfo.end(); i++)
 			{
-				if (i->loop == v)
+				if (i->end_loop == v)
 				{
 					circle = *i;
 					whileInfo.erase(i);
@@ -195,11 +195,11 @@ public:
 			if (find_circle)
 			{
 				boost::format fmt("do\n{\n%s\n}\nwhile(%s);\n%s");
-				const std::string Loop = (elementTable[circle.loop] % "").str();
-				const std::string linkBody = get(edge_all, g)[edge(circle.block, v, g).first]->GetBogy();
+				const std::string Loop = (elementTable[circle.end_loop] % "").str();
+				const std::string linkBody = get(edge_all, g)[edge(circle.block_loop, v, g).first]->GetBogy();
 				const std::string outLoop = (elementTable[circle.out_loop] % "").str();
 				(fmt % Loop % linkBody % outLoop);
-				elementTable.erase(circle.loop);
+				elementTable.erase(circle.end_loop);
 				elementTable.erase(circle.out_loop);
 				currentThread = v;
 				elementTable.insert(std::pair<Graph::vertex_descriptor, boost::format>{v, "%s" + fmt.str()});
@@ -242,7 +242,7 @@ public:
 				bool find_while = false;
 				for (auto i= whileInfo.begin();i!= whileInfo.end();i++)
 				{
-					if (i->block == v)
+					if (i->block_loop == v)
 					{
 						circle = *i;
 						find_while = true;
@@ -252,13 +252,13 @@ public:
 				}
 				if (find_while) 
 				{
-					const std::string Loop = (elementTable[circle.loop] % "").str();
-					const std::string linkBody = get(edge_all, g)[edge(v, circle.loop, g).first]->GetBogy();
+					const std::string Loop = (elementTable[circle.end_loop] % "").str();
+					const std::string linkBody = get(edge_all, g)[edge(v, circle.end_loop, g).first]->GetBogy();
 					const std::string outLoop = (elementTable[circle.out_loop] % "").str();
 
 					format fmtloop("while(%s)\n{\n%s}\n%s");
 					(fmtloop % linkBody % Loop % outLoop);
-					elementTable.erase(circle.loop);
+					elementTable.erase(circle.end_loop);
 					elementTable.erase(circle.out_loop);
 					currentThread = v;
 					elementTable.insert(std::pair<Graph::vertex_descriptor, boost::format>{v, "%s" + fmtloop.str()});
@@ -413,23 +413,23 @@ private:
 	};
 	struct blockConst
 	{
-		size_t loop;													//Блок конца цикла
-		size_t out_loop;												//Блок выхода из цикла
-		size_t block;													//Блок создающий цикл
-		size_t creat;													//Поток создания цикла
-		size_t loopstart;												//Блок начала цикла
+		size_t end_loop;													//Блок конца цикла
+		size_t out_loop;													//Блок выхода из цикла
+		size_t block_loop;													//Блок создающий цикл
+		size_t creat_loop;													//Поток создания цикла
+		size_t start_loop;													//Блок начала цикла
 	};
-	std::stack<BlockType> m_currentBlocks;								//Хранит стек событий
-	std::stack<Graph::vertex_descriptor> ifelseBack;					//Хранит стек возвращения для блоко if
-	size_t creator = -2;												//Счетчик для доп потоков
-	std::map<Graph::vertex_descriptor, boost::format> elementTable;		//Таблица обхода, хранит текущих код для разных ветвей
-	Graph::vertex_descriptor currentThread;								//Текущая ветвь 
-	std::vector < blockConst> whileInfo;								//Хранит информацию о циклах, начале и завершении 
-	std::vector<size_t> forkBack;										//хранит стек возвращения для блока fork
-	std::vector<int> forkForever;										//Хранит ветви, которые не присоединяются к коду программы 
-	bool forkFor = false;												//Определяет является ли текущая ветвь без присоединения
-	std::vector<int> forkPoints;										//Хранит номера ветвей, которые разделяются блоков fork
-	std::string& m_output;												//Вывод
+	std::stack<BlockType>								m_currentBlocks;	//Хранит стек событий
+	std::stack<Graph::vertex_descriptor>				ifelseBack;			//Хранит стек возвращения для блоко if
+	size_t												creator = -2;		//Счетчик для доп потоков
+	std::map<Graph::vertex_descriptor, boost::format>	elementTable;		//Таблица обхода, хранит текущих код для разных ветвей
+	Graph::vertex_descriptor							currentThread;		//Текущая ветвь 
+	std::vector < blockConst>							whileInfo;			//Хранит информацию о циклах, начале и завершении 
+	std::vector<size_t>									forkBack;			//хранит стек возвращения для блока fork
+	std::vector<int>									forkForever;		//Хранит ветви, которые не присоединяются к коду программы 
+	bool												forkFor = false;	//Определяет является ли текущая ветвь без присоединения
+	std::vector<int>									forkPoints;			//Хранит номера ветвей, которые разделяются блоков fork
+	std::string&										m_output;			//Вывод
 };
 void GraphGen::AcivInit()
 {   //Поиск вершины с типом ActivityType::init
