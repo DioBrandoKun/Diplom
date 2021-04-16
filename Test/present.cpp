@@ -1,7 +1,7 @@
 #include "present.h"
 IdMapType  IdMap::m_ids;
 unsigned long IdMap::m_counter=1;
-map<const string, const string>IdMap::IdName;
+map<const string, const string>IdMap::m_IdName;
 
 const string RightFormat(const string& Input)//Обрезание типа до нужно для ипользования в дальнейшем
 {//Либо перевод в числовой формат не стандартного типа

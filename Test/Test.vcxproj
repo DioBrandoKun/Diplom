@@ -162,6 +162,8 @@
   <ItemGroup>
     <ClInclude Include="CodeGen.h" />
     <ClInclude Include="CustomParser.h" />
+    <ClInclude Include="ActivityClasses.h" />
+    <ClInclude Include="ClassDiagram.h" />
     <ClInclude Include="present.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

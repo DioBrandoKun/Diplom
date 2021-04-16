@@ -65,7 +65,7 @@ void CustomParser::Parse( const ptree& Pack,const bool& OtherTree)
 				string id = diagramTree.second.get<std::string>("<xmlattr>.xmi:id");
 				string Name = diagramTree.second.get<std::string>("<xmlattr>.name");
 				cout << Name;
-				Realized.insert(IdMap::Insert(id).second);
+				m_Realized.insert(IdMap::Insert(id).second);
 				IdMap::InputName(id, Name);
 				break;
 			}
@@ -93,7 +93,7 @@ void CustomParser::Parse( const ptree& Pack,const bool& OtherTree)
 				
 				string id_block= diagramTree.second.get<string>("annotatedElement.<xmlattr>.xmi:idref");
 				unsigned long id_long = IdMap::Insert(id_block).second;
-				comments.push_back(pair<unsigned long, string>(id_long, body));
+				m_comments.push_back(pair<unsigned long, string>(id_long, body));
 				break;
 			}
 			default:
@@ -109,39 +109,39 @@ map<unsigned long, ActivityTrans*> CustomParser::Normalize()//Функция для работы
 	IdMap::Print();
 	SetLinks();
 	SetComments();
-	for (auto&  assosItem: AllAssos)//Восстанавливаем композиции
+	for (auto&  assosItem: m_AllAssos)//Восстанавливаем композиции
 	{
 		vector<unsigned long> ClassToAssos = assosItem.GetSource();
 		
 		for (auto& classItem: ClassToAssos)//AllClass
 		{
-			auto iter = find_if(AllClass.begin(), AllClass.end(), [classItem](ClassTrans& elem)
+			auto iter = find_if(m_AllClass.begin(), m_AllClass.end(), [classItem](ClassTrans& elem)
 				{
 					return elem.GetLocalId() == classItem;
 				});
-			if(iter!= AllClass.end())
+			if(iter!= m_AllClass.end())		//Находим класс, в которой направлена ассоциация и записываем её
 				iter->AddCompos(assosItem);
 		}
 	}
-	for (auto& realizItem : AllRealiz)
+	for (auto& realizItem : m_AllRealiz)//Установка реализаций
 	{
 		string client = realizItem.GetСlient();
-		auto classReal=find_if(AllClass.begin(), AllClass.end(), [client](auto& classItem)
+		auto classReal=find_if(m_AllClass.begin(), m_AllClass.end(), [client](auto& classItem)
 			{
 				return to_string(classItem.GetLocalId()) == client;
 			});
 		classReal->AddRealiz(realizItem);//Реализация всегда для одного класса, поэтому мы сразу идем дальше
 	}
-	for (auto& classItem : AllClass)//Переход для всех классов от цифр к буквенным определениям
+	for (auto& classItem : m_AllClass)//Переход для всех классов от цифр к буквенным определениям
 	{
 		classItem.SetNum();
 	}
 
-	{
+	{	//Здесь стоит придумать выход из вечного цикла
 		unsigned long j = 0;
 		vector<unsigned long> realizedJ; //костыль чтобы не реализовывать копирование для класса ClassTrans
 		//номера классов которые еще не были выведены
-		for (unsigned long k = 0; k < AllClass.size(); k++)
+		for (unsigned long k = 0; k < m_AllClass.size(); k++)
 		{
 			realizedJ.push_back(k);
 		}
@@ -150,19 +150,20 @@ map<unsigned long, ActivityTrans*> CustomParser::Normalize()//Функция для работы
 			for (auto j = realizedJ.cbegin(); j != realizedJ.cend();)//в этом цикле смотрим какие классы нужно реализовать и выписываем класс, если он уже ни от кого не зависит
 			{
 				auto Num = *j;
-				auto NeedRealize = AllClass[Num].GetRealize();//Получаем указатель на нужные классу вектор
+				auto NeedRealize = m_AllClass[Num].GetRealize();//Получаем указатель на нужные классу вектор
+				
 				for (auto k = (*NeedRealize).cbegin(); k != (*NeedRealize).cend(); )
 				{
-					if (Realized.find(*k) != Realized.end())
+					if (m_Realized.find(*k) != m_Realized.end())
 					{
 						k = (*NeedRealize).erase(k);
 					}
 					else k++;
 				}
-				if ((*NeedRealize).size() == 0)
+				if ((*NeedRealize).size() == 0) 
 				{
-					Realized.insert(AllClass[Num].GetLocalId());
-					cout << AllClass[Num].ToCode();
+					m_Realized.insert(m_AllClass[Num].GetLocalId());
+					cout << m_AllClass[Num].ToCode();
 					j = realizedJ.erase(j);
 				}
 				else
@@ -173,7 +174,7 @@ map<unsigned long, ActivityTrans*> CustomParser::Normalize()//Функция для работы
 		}
 	}
 	cout << endl;
-	return AllActivity;
+	return m_AllActivity;
 }
 void CustomParser::Class(const ptree& pt, const int& Interface)//1-для Интерфеса 2-для инумератора
 {
@@ -208,7 +209,7 @@ void CustomParser::Class(const ptree& pt, const int& Interface)//1-для Интерфеса
 		}
 	}
 	if (Interface == 1 or Interface == 2)Example.SetInterface();
-	AllClass.push_back(move(Example));
+	m_AllClass.push_back(move(Example));
 }
 string CustomParser::Inhert(const ptree& pt)//Наследование
 {
@@ -284,7 +285,7 @@ ClassOperTrans CustomParser::ClassOperations(const ptree& pt, const string& Clas
 		Return.pop_back();
 		InputName.pop_back();
 	}
-	Example.IsVirtual(Abstract);
+	Example.placeVirtual(Abstract);
 	Example.AddElems(InputName, Return);
 	return Example;
 }
@@ -295,7 +296,7 @@ void CustomParser::Realizat(const ptree& pt)
 	const std::string IdSup= pt.get<std::string>("<xmlattr>.supplier");
 	const std::string IdClient = pt.get<std::string>("<xmlattr>.client");
 	Realization NewRealiz(Id, IdSup, IdClient);
-	AllRealiz.push_back(move(NewRealiz));
+	m_AllRealiz.push_back(move(NewRealiz));
 }
 void CustomParser::Assosiation(const ptree& pt)
 {
@@ -345,7 +346,7 @@ void CustomParser::Assosiation(const ptree& pt)
 		}
 	}
 	Assos Example(Id, Name, Member[1], Member[0],Type);
-	AllAssos.push_back(move(Example));
+	m_AllAssos.push_back(move(Example));
 }
 void CustomParser::Interface(const ptree& pt)
 {
@@ -370,7 +371,7 @@ void CustomParser::Activity(const ptree& pt)
 	const std::string type = pt.get<std::string>("<xmlattr>.xmi:type");
 	const std::string StrVisibility = pt.get<std::string>("<xmlattr>.visibility");
 	ActivityTrans* Example=new ActivityTrans(Id, ActivType[type],Name);
-	AllActivity.insert({ Example->GetLocalId(), Example });
+	m_AllActivity.insert({ Example->GetLocalId(), Example });
 }
 void CustomParser::LinkParse(const ptree& pt)
 {
@@ -387,20 +388,20 @@ void CustomParser::LinkParse(const ptree& pt)
 	}
 	LinkTrans linkXMI(id, source, targer);
 	linkXMI.AddBody(body);
-	allLink.push_back(linkXMI);
+	m_allLink.push_back(linkXMI);
 }
 void CustomParser::SetLinks()
 {
-	for (auto& link : allLink)
+	for (auto& link : m_allLink)
 	{
-		AllActivity[link.GetSource()]->AddOutgoing(link);
-		AllActivity[link.GetTarget()]->AddIngoing(link);
+		m_AllActivity[link.GetSource()]->AddOutgoing(link);
+		m_AllActivity[link.GetTarget()]->AddIngoing(link);
 	}
 }
 void CustomParser::SetComments()
 {
-	for (auto& pair : comments)
+	for (auto& pair : m_comments)
 	{
-		AllActivity[pair.first]->AddBody(pair.second);
+		m_AllActivity[pair.first]->AddBody(pair.second);
 	}
 }
