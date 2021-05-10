@@ -5,6 +5,7 @@ map<const string, const string>IdMap::m_IdName;
 
 const string RightFormat(const string& Input)//Обрезание типа до нужно для ипользования в дальнейшем
 {//Либо перевод в числовой формат не стандартного типа
+	if (Input == "none") return "none";
 	string Typer = "";
 	size_t pos = Input.find("EAJava_");
 	if (pos != -1)
@@ -15,7 +16,7 @@ const string RightFormat(const string& Input)//Обрезание типа до нужно для иполь
 		if (Example == "boolean") Example = "bool";//Здесь строить условия для особых типов, которые в c++ называются по другому
 		return Example;
 	}
-	else
+	else 
 	{
 		Typer = std::to_string(IdMap::Insert(Input).second);
 	}

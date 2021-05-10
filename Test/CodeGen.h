@@ -27,8 +27,13 @@ public:
 		m_activTable = input; 
 		AcivInit();
 		vector<unsigned long> path;
-		InsideFork(m_head[0], path);
-		MakeGraph(path);
+		for (unsigned i = 0; i < m_head.size(); i++)
+		{
+			InsideFork(m_head[i], path);
+			MakeGraph(path);
+			path = vector<unsigned long>();
+			m_graph = Graph();
+		}
 		//vector<unsigned long> help;
 		//Gen(head[0]);
 		//for (auto helpeml : help)

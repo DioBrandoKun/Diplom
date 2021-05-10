@@ -181,6 +181,7 @@ public:
 	}
 	string ToCode() const
 	{
+		if (m_elem_typeSkel == "none") m_elem_typeSkel = "";
 		return m_elem_typeSkel+'\t';
 	}
 };
@@ -305,8 +306,3 @@ public:
 protected:
 	IPublicSkel m_Public;
 };
-
-
-
-
-

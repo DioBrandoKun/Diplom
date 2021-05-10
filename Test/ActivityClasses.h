@@ -8,7 +8,7 @@ public:
 	{
 
 	}
-	void AddBody(const string& body) const					//Добавить код ребра
+	void SetBody(const string& body) const					//Добавить код ребра
 	{
 		this->m_body = body;
 	}
@@ -40,7 +40,6 @@ private:
 class ActivityTrans :public INumerableElement, public IName
 {
 public:
-
 	enum class ActivityType
 	{
 		action,
@@ -50,7 +49,6 @@ public:
 		fin,
 		join
 	};
-
 	ActivityTrans(const string& id, const int& Type, const string& Name)
 		:INumerableElement(id), IName(Name)
 	{
@@ -88,7 +86,7 @@ public:
 		}
 		}
 	}
-	void AddBody(const string& Body)			//Добавить блоку код
+	void SetBody(const string& Body)			//Добавить блоку код
 	{
 		this->m_Body = Body;
 	}
@@ -105,17 +103,15 @@ public:
 		return Output +
 			"Body:" + m_Body + "\n";
 	}
-
-	void AddOutgoing(const LinkTrans& Linker)	//Добавить исходящее
+	void SetOutgoing(const LinkTrans& Linker)	//Добавить исходящее
 	{
 		m_outLinks.push_back(Linker);
 	}
-	void AddIngoing(const LinkTrans& Linker)	//Добавить входящее ребро
+	void SetIngoing(const LinkTrans& Linker)	//Добавить входящее ребро
 	{
 		m_inLinks.push_back(Linker);
 	}
-
-	vector<unsigned> GetOut() const				//Возвращает список вершин, переходящих в данную вершину 
+	vector<unsigned> GetOut() const				//Возвращает список вершин, переходящих из данной вершину 
 	{
 		vector<unsigned> out;
 		for (auto link : m_outLinks)
@@ -126,8 +122,6 @@ public:
 	{
 		return m_inLinks;
 	}
-
-
 	ActivityType GetType() const				//Получения типа
 	{
 		return  m_type;
@@ -136,10 +130,7 @@ public:
 	{
 		m_type = newType;
 	}
-
-
 private:
-
 	ActivityType		m_type;					//Тип блока активности
 	vector<LinkTrans>	m_inLinks;				//Входящие ребра
 	vector<LinkTrans>	m_outLinks;				//Исходящие ребра

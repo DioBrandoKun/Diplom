@@ -60,7 +60,7 @@ public:
 			m_currentBlocks.push(While);
 			boost::format fmt("%s");
 			graph_traits<Graph>::out_edge_iterator ei, edge_end;
-			Graph::vertex_descriptor in_loop;
+			Graph::vertex_descriptor in_loop=-1;
 			Graph::vertex_descriptor out_loop;
 			//Цикл, проходящий по всем ребрам, исходящим из e.m_target то-есть блок decigion
 			for (tie(ei, edge_end) = out_edges(e.m_target, g); ei != edge_end; ++ei	)				//Из блока  decigion выходят две ветви
@@ -74,7 +74,11 @@ public:
 				else if (targ != e.m_target) out_loop = targ;										//Ветвь без текста выводит из цикла
 			}
 
-
+			if (in_loop == -1)
+			{
+				std::cout << "Circle with out conditions!\n";
+				throw(new std::runtime_error("Circles must have conditions!"));
+			}
 			blockConst whiledata;
 			whiledata.block_loop = e.m_target;
 			whiledata.out_loop = out_loop;
@@ -91,7 +95,7 @@ public:
 		{
 			m_currentBlocks.push(DoWhile);
 			graph_traits<Graph>::out_edge_iterator ei, edge_end;
-			Graph::vertex_descriptor out_loop;
+			Graph::vertex_descriptor out_loop=-1;
 			//Цикл, проходящий по всем ребрам, исходящим из e.m_source то-есть блок decigion
 			for (tie(ei, edge_end) = out_edges(e.m_source, g); ei != edge_end; ++ei)
 			{
@@ -102,6 +106,11 @@ public:
 					out_loop = point;
 					break;
 				}
+			}
+			if (out_loop == -1)
+			{
+				std::cout << "Circle with out conditions!\n";
+				throw(new std::runtime_error("Circles must have conditions!"));
 			}
 			graph_traits<Graph>::in_edge_iterator in, inge_end;
 			Graph::vertex_descriptor start_loop;
@@ -187,6 +196,16 @@ public:
 			m_currentThread = v;
 			//Сохранение записи
 			m_elementTable.insert(std::pair<Graph::vertex_descriptor, boost::format>{v, boost::format("%s" + fmt.str())});
+			if (in_degree(v, g) < 1)
+			{
+				std::cout << "Block must have one incoming!\n";
+				throw(new std::runtime_error("Block must have at least one incoming!"));
+			}
+			if (out_degree(v, g) > 1)
+			{
+				std::cout << "Block must have only one outcoming!\n";
+				throw(new std::runtime_error("Block must have only one outcoming!"));
+			}
 		}
 
 		if (!m_currentBlocks.empty() && (m_currentBlocks.top() == DoWhile))
@@ -247,7 +266,15 @@ public:
 		{
 			const size_t CountOfOutEdges = out_degree(v, g);
 			if (CountOfOutEdges != 2)
+			{
+				std::cout << "More than two output edges is not supported in decision node";
 				throw(new std::runtime_error("More than two output edges is not supported"));
+			}
+			if (in_degree(v, g) > 2)
+			{
+				std::cout << "More than two input in decision node";
+				throw(new std::runtime_error("More than two input in decision node"));
+			}
 
 			if (!m_currentBlocks.empty() && (m_currentBlocks.top() == While))
 			{
@@ -371,6 +398,11 @@ public:
 
 				}
 			}
+			if (main == -1)
+			{
+				std::cout << "Fork with out main!\n";
+				throw(new std::runtime_error("Fork must have main!"));
+			}
 			Block += (m_elementTable[main] % "").str();
 			m_elementTable.erase(main);
 			for (auto iter = wait.begin(); iter != wait.end(); iter++)
@@ -389,11 +421,16 @@ public:
 			m_elementTable.erase(m_currentThread);
 			m_currentThread = v;
 			m_elementTable.insert(std::pair<Graph::vertex_descriptor, boost::format>{v, fmt});
+			if (out_degree(v, g) > 1)
+			{
+				std::cout << "Join must have only one outcoming!\n";
+				throw(new std::runtime_error("Block must have only one outcoming!"));
+			}
 			return;
 		}
-		if (in_degree(v, g) >= 2)
+		if (in_degree(v, g) == 2)
 		{
-			if (g[v]->GetType() != ActivityTrans::ActivityType::fork)
+			if (g[v]->GetType() != ActivityTrans::ActivityType::join)
 			{
 				graph_traits<Graph>::in_edge_iterator ei, edge_end;
 				bool ifblock = false;//Блок являеться только блоком if
@@ -417,6 +454,14 @@ public:
 				boost::format fmt("%s");
 				m_currentThread = m_creator;
 				m_elementTable.insert(std::pair<Graph::vertex_descriptor, boost::format>{m_creator, fmt});
+			}
+		}
+		else if (in_degree(v, g) > 2)
+		{
+			if (g[v]->GetType() != ActivityTrans::ActivityType::join)
+			{
+				std::cout << "Block must have 2 or less incoming!\n";
+				throw(new std::runtime_error("Block must have 2 or less incoming!"));
 			}
 		}
 	}	
@@ -479,7 +524,7 @@ void GraphGen::Inside(const unsigned long start, vector<unsigned long>& out, vec
 	if (headp->GetType() == ActivityTrans::ActivityType::fork) fork.push_back(headp->GetLocalId());
 	if(out_iter == out.end())
 		out.push_back(start);
-	for (auto elem : targetVec)
+	for (auto& elem : targetVec)
 	{
 		if(find(out.begin(), out.end(),elem)==out.end())
 		Inside(elem,out,fork);
@@ -490,7 +535,6 @@ void GraphGen::MakeGraph(vector<unsigned long>& activ_points)
 	size_t initialNode;//начальная вершина графа
 	std::unordered_map<unsigned long, size_t> idMap; //таблица локальных id и номеров вершин графа
 
-	/*BOOST_FOREACH(const ActivityTrans & vertex, std::get<0>(m_activity))*/
 	int i = 0;
 	for(auto activity : activ_points)
 	{
@@ -505,7 +549,7 @@ void GraphGen::MakeGraph(vector<unsigned long>& activ_points)
 	for (auto activity : activ_points)
 	{	//На графе ставим ребра
 		auto targets=m_activTable[activity]->GetOut();//Смотрим в какие вершины переходит текущая вершина
-		for (auto one_targ : targets)
+		for (auto& one_targ : targets)
 		{	//Теперь надо найти ребро - LinkTrans
 			auto links=m_activTable[one_targ]->GetInLinks();//Получаем все ребра
 			auto linkIter = find_if(links.begin(), links.end(), [activity](LinkTrans& inLink)
@@ -518,7 +562,15 @@ void GraphGen::MakeGraph(vector<unsigned long>& activ_points)
 	boost::write_graphviz(std::cout, m_graph);
 	std::string code;
 	DfsCodeGenerator visitor(code);
-	boost::depth_first_search(m_graph, boost::visitor(visitor).root_vertex(initialNode));
+	try
+	{
+		boost::depth_first_search(m_graph, boost::visitor(visitor).root_vertex(initialNode));
+	}
+	catch(...)
+	{
+		getchar();
+		exit(0);
+	}
 	cout << code;
 
 	bool sh=true;

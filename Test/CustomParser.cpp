@@ -275,16 +275,19 @@ ClassOperTrans CustomParser::ClassOperations(const ptree& pt, const string& Clas
 				Static = Data.second.data();
 		}
 	}
-	if ((Return.size() != InputName.size()) || (Return.size() == 0))//Если операция содержит неправильное колво элементов
+	string type;
+	if ((std::find(InputName.begin(), InputName.end(), "return") == InputName.end()) || (Return.size() == 0))//Если операция содержит неправильное колво элементов
 	{
-		cout << "Wrong operation format\t" << ClassName << "\t" << StrName;
+		type = "none";
 	}
-	ClassOperTrans Example(Id,StrName,Static, Return[Return.size()-1], StrVisibility);
-	if (Return.size() > 0)
+	else type = Return[Return.size() - 1];
+	ClassOperTrans Example(Id,StrName,Static,type , StrVisibility);
+	if (Return.size() > 0 && type!="none")
 	{
 		Return.pop_back();
 		InputName.pop_back();
 	}
+
 	Example.placeVirtual(Abstract);
 	Example.AddElems(InputName, Return);
 	return Example;
@@ -387,21 +390,21 @@ void CustomParser::LinkParse(const ptree& pt)
 	{
 	}
 	LinkTrans linkXMI(id, source, targer);
-	linkXMI.AddBody(body);
+	linkXMI.SetBody(body);
 	m_allLink.push_back(linkXMI);
 }
 void CustomParser::SetLinks()
 {
 	for (auto& link : m_allLink)
 	{
-		m_AllActivity[link.GetSource()]->AddOutgoing(link);
-		m_AllActivity[link.GetTarget()]->AddIngoing(link);
+		m_AllActivity[link.GetSource()]->SetOutgoing(link);
+		m_AllActivity[link.GetTarget()]->SetIngoing(link);
 	}
 }
 void CustomParser::SetComments()
 {
 	for (auto& pair : m_comments)
 	{
-		m_AllActivity[pair.first]->AddBody(pair.second);
+		m_AllActivity[pair.first]->SetBody(pair.second);
 	}
 }

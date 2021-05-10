@@ -9,10 +9,9 @@ public:
 	ClassValueTrans(const string& id, const string& Name, const string& StaticType, const string& ElemType, const string& DefaulValue, const string& Public, const string& constType) :INumerableElement(id),
 		IStatic(StaticType), IType(ElemType), m_DefaultVal(DefaulValue), IName(Name), IPublic(Public), m_isConst(constType == "true" ? "const " : "")
 	{
-		IdMap::InputName(id, Name);
+		IdMap::InputName(id, Name);								//Можно в дальнейшем вшить данный вызов в IName
 		(DefaulValue == "") ? m_NotStated = true : m_NotStated = false;
 	}
-
 	string ToString() const					//Вывод для дебага
 	{
 		return
@@ -23,7 +22,6 @@ public:
 			m_Public.ToString() +
 			"Default=\t" + m_DefaultVal + "\n";
 	}
-
 	string ToCode() const					//Создание кода
 	{
 		string Value = "";
@@ -90,7 +88,7 @@ public:
 	ClassOperTrans(const string& id, const string& Name, const string& StaticType, const string& ElemType, const string& Public)
 		:INumerableElement(id), IStatic(StaticType), IType(ElemType), IName(Name), IPublic(Public)
 	{
-		IdMap::InputName(id, Name);
+		IdMap::InputName(id, Name);			//Можно в дальнейшем вшить данный вызов в IName
 	}
 	string ToString() const									//Вывод для дебага
 	{
@@ -257,7 +255,7 @@ public:
 	ClassTrans(const string& id, const string& Name)
 		:INumerableElement(id), IName(Name)
 	{
-		IdMap::InputName(id, Name);
+		IdMap::InputName(id, Name);				//Можно в дальнейшем вшить данный вызов в IName
 	}
 	void AddValue(const ClassValueTrans& Value)		//Добавление член-класса
 	{
