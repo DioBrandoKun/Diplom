@@ -3,46 +3,52 @@
 
 
 #include <iostream>
-
+#include <string>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/xml_parser.hpp>//Парсер XML
-
 #include "CustomParser.h"
 #include "CodeGen.h"
 using boost::property_tree::ptree;//Не находит тип через hpp
-
-int main()
+using namespace std;
+int main(int args, char *argv[])
 {
-
+    string Path;
+#ifndef DEBUG
+    if (args != 2)
+    {
+        cout << "First programm\nSecond XMI\n";
+        return -1;
+    }
+    else
+    {
+        Path = string(argv[1]);
+        string check = Path.substr(Path.rfind(".") + 1);
+        if (check != "xml")
+        {
+            cout << "XMI file must have xml format!";
+            return -2;
+        }
+    }
+#else
+    Path = "B:/Torrent/UML/123456.xml";
+#endif 
+    ofstream fout; //Вывод для файла
     ptree pt;
-    std::string Path = "B:/Torrent/UML/123456.xml"; //Путь к файлу
+    string name = Path.substr(Path.rfind("/")+1, Path.rfind(".") - Path.rfind("/"))+".cpp"; //Имя файла и формат
+    fout.open(name);
     read_xml(Path, pt);
+    string out;
     CustomParser Parser(pt);
     Parser.Parse();
     auto elements = Parser.Normalize();
-    if(elements.size()>0)
+    out = Parser.output;
+    if (elements.size() > 0)
+    {
         GraphGen graph(elements);
-    
-    
-
-    /*ActivityTrans Example("2", 1, "Govono");
-    ActivityTrans Example2("1", 1, "Test");
-    typedef adjacency_list <vecS, vecS, boost::bidirectionalS, std::shared_ptr<ActivityTrans>> vector_graph_t;
-
-
-    // creates a graph with 4 vertices
-    vector_graph_t g;
-
-    // fills the property 'vertex_name_t' of the vertices
-    //boost::put(vertex_name_t(), g, 0, Example); // set the property of a vertex
-    //indexes[Example] = boost::vertex(0, g);     // retrives the associated vertex descriptor
-    //boost::put(vertex_name_t(), g, 1, Example2);
-    //indexes[Example2] = boost::vertex(1, g);
-    const size_t VertexDescriptor = boost::add_vertex(std::make_shared<ActivityTrans>(Example), g);
-    const size_t VertexDescriptor2 = boost::add_vertex(std::make_shared<ActivityTrans>(Example2), g);
-    // adds the edges
-    // indexes[edges[0].first] maps "aaa" to the associated vertex index*/
-    //boost::add_edge(indexes[Example], indexes[Example2], std::make_shared<ActivityTrans>(Example), g);
+        out += graph.output;
+    }
+    fout << out;
+    fout.close();
     return 0;
 }
 

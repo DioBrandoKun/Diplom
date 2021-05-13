@@ -89,10 +89,20 @@ void CustomParser::Parse( const ptree& Pack,const bool& OtherTree)
 			case 11:
 			{
 				cout << "uml:Comment" << endl;
-				string body= diagramTree.second.get<string>("<xmlattr>.body");
-				
-				string id_block= diagramTree.second.get<string>("annotatedElement.<xmlattr>.xmi:idref");
-				unsigned long id_long = IdMap::Insert(id_block).second;
+				string body;
+				string id_block;
+				unsigned long id_long;
+				try
+				{
+					body = diagramTree.second.get<string>("<xmlattr>.body");
+					id_block = diagramTree.second.get<string>("annotatedElement.<xmlattr>.xmi:idref");
+					id_long = IdMap::Insert(id_block).second;
+				}
+				catch (const std::exception&)
+				{
+					continue;					//Если имеется комментарий без соединения с блоком
+				}
+
 				m_comments.push_back(pair<unsigned long, string>(id_long, body));
 				break;
 			}
@@ -163,7 +173,7 @@ map<unsigned long, ActivityTrans*> CustomParser::Normalize()//Функция для работы
 				if ((*NeedRealize).size() == 0) 
 				{
 					m_Realized.insert(m_AllClass[Num].GetLocalId());
-					cout << m_AllClass[Num].ToCode();
+					output+= m_AllClass[Num].ToCode();		//Записываем код класса
 					j = realizedJ.erase(j);
 				}
 				else

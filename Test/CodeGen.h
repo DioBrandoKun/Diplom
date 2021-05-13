@@ -24,6 +24,7 @@ class GraphGen
 public:
 	GraphGen(map<unsigned long, ActivityTrans*> input)
 	{ 
+		output = "";
 		m_activTable = input; 
 		AcivInit();
 		vector<unsigned long> path;
@@ -34,10 +35,6 @@ public:
 			path = vector<unsigned long>();
 			m_graph = Graph();
 		}
-		//vector<unsigned long> help;
-		//Gen(head[0]);
-		//for (auto helpeml : help)
-		//	cout << helpeml<<" ";
 	};
 	void AcivInit();
 	void MakeGraph(vector<unsigned long>&);
@@ -46,5 +43,5 @@ public:
 	map<unsigned long, ActivityTrans*>	m_activTable;	//Коллекциях всех диаграмм активности
 	vector<unsigned long>				m_head;			//Все стартовые вершины
 	Graph								m_graph;		//Графы для отображения всех диаграмм активности 
+	std::string						    output;			//Сгенерированные строки
 };
-

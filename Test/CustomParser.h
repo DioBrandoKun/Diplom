@@ -24,6 +24,7 @@ public:
 	CustomParser(const ptree& tree) : m_root(tree) {}
 	void Parse(const ptree& Pack=ptree(),  const bool& OtherTree=false);
 	map<unsigned long, ActivityTrans*>				Normalize();
+	string								output = "";		//Строка с классами на выход
 private:
 	void			Class(const ptree& tree, const int& Interface=0);			//Будет возвращать кастомный класс, который будет разбираться в соотв конструкторах Интерфейсов, Классов и Нумераторов
 	ClassValueTrans ClassValue(const ptree& pt);								//Обработка членов класса

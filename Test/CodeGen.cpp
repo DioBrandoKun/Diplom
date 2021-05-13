@@ -571,29 +571,5 @@ void GraphGen::MakeGraph(vector<unsigned long>& activ_points)
 		getchar();
 		exit(0);
 	}
-	cout << code;
-
-	bool sh=true;
-	/*
-	BOOST_FOREACH(const Edge & edge, std::get<1>(m_activity))
-	{
-		const std::unordered_map<size_t, unsigned long>::const_iterator itSource = std::find_if(
-			idMap.begin(), idMap.end(), boost::bind(&std::unordered_map<size_t, unsigned long>::value_type::second, _1) == edge.GetSource().GetLocalId()
-		);
-		const std::unordered_map<size_t, unsigned long>::const_iterator itTarget = std::find_if(
-			idMap.begin(), idMap.end(), boost::bind(&std::unordered_map<size_t, unsigned long>::value_type::second, _1) == edge.GetTarget().GetLocalId()
-		);
-
-		if ((itSource != idMap.end()) && (itTarget != idMap.end()))
-			boost::add_edge(itSource->first, itTarget->first, std::make_shared<Edge>(edge), m_graph);
-	}
-
-	const char* labels[] = { "DecisionNode", "ActivityFinalNode","InitialNode", "Action", "Action" };
-	//, boost::make_label_writer(labels));*/
-
-	//std::string code;
-	//DfsCodeGenerator visitor(code);
-	//boost::depth_first_search(m_graph, boost::visitor(visitor).root_vertex(initialNode));
-
-	//std::cout << code;
+	output+= code;
 }
